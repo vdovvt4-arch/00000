@@ -1,0 +1,219 @@
+/* =========================================================
+   mobile.css - تصميم وتجربة تطبيق الهاتف المحمول (Power Gym Mobile)
+   واجهة تطبيق هاتف أصلية مع شريط تنقل سفلي ودعم النوتش واللمس السريع
+   ========================================================= */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+}
+
+button, a, select, label, input {
+  touch-action: manipulation;
+}
+
+/* إخفاء شريط التمرير الأفقي لأزرار الفلترة والتبويبات في الموبايل */
+.no-scrollbar::-webkit-scrollbar,
+#playersDirectory .overflow-x-auto::-webkit-scrollbar,
+#financeModal .overflow-x-auto::-webkit-scrollbar {
+  display: none;
+}
+#playersDirectory .overflow-x-auto,
+#financeModal .overflow-x-auto {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ---------- شريط التنقل السفلي للهاتف (Mobile Bottom Navigation Bar) ---------- */
+#mobileBottomNav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 38;
+  background: rgba(5, 13, 26, 0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-top: 1px solid rgba(56, 189, 248, 0.24);
+  box-shadow: 0 -10px 32px rgba(2, 6, 23, 0.75);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  #mobileBottomNav {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.mnav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 2px;
+  border-radius: 14px;
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 800;
+  border: 0;
+  background: transparent;
+  transition: color 150ms ease, background-color 150ms ease, transform 120ms ease;
+}
+
+.mnav-btn i {
+  font-size: 16px;
+  color: #60a5fa;
+  transition: transform 150ms ease, color 150ms ease;
+}
+
+.mnav-btn.is-active,
+.mnav-btn:active {
+  color: #ffffff;
+  background: rgba(37, 99, 235, 0.16);
+}
+
+.mnav-btn.is-active i {
+  color: #38bdf8;
+  transform: translateY(-1px);
+}
+
+/* الزر المركزي البارز لإضافة لاعب جديد */
+.mnav-fab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin-top: -18px;
+  padding: 8px 4px 6px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #38bdf8 0%, #2563eb 60%, #1d4ed8 100%);
+  color: #ffffff !important;
+  font-size: 10.5px;
+  font-weight: 900;
+  border: 2px solid rgba(7, 17, 31, 0.95);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.55);
+}
+
+.mnav-fab i {
+  font-size: 17px;
+  color: #ffffff !important;
+}
+
+.mnav-fab:active {
+  transform: scale(0.95);
+}
+
+/* ---------- تحسينات الشاشات الصغيرة (الهواتف الذكية) ---------- */
+@media (max-width: 640px) {
+  /* منع تكبير iOS التلقائي عند الكتابة */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* الهيدر العلوي المدمج للهاتف */
+  header > div {
+    padding-top: 0.65rem !important;
+    padding-bottom: 0.65rem !important;
+  }
+
+  /* الغلاف الرئيسي بحجم متناسق للموبايل */
+  .pg-hero {
+    border-radius: 20px !important;
+    min-height: 148px !important;
+    margin-bottom: 1rem !important;
+  }
+  .pg-hero__content {
+    padding: 16px 18px !important;
+    gap: 6px !important;
+  }
+  .pg-hero__title {
+    font-size: 20px !important;
+  }
+  .pg-hero__sub {
+    font-size: 11.5px !important;
+    line-height: 1.45;
+  }
+  .pg-hero__actions .pg-btn {
+    padding: 7px 11px !important;
+    font-size: 11px !important;
+    border-radius: 11px !important;
+  }
+
+  /* بطاقات الإحصائيات الـ 6 على الهاتف (شبكة 2×3 مريحة) */
+  #playersDirectory > .grid {
+    gap: 0.55rem !important;
+    margin-bottom: 1rem !important;
+  }
+  #playersDirectory > .grid > .card-bg {
+    padding: 0.75rem 0.8rem !important;
+    border-radius: 1rem !important;
+  }
+  #playersDirectory > .grid > .card-bg p.text-2xl {
+    font-size: 1.25rem !important;
+    line-height: 1.5rem !important;
+  }
+  #playersDirectory > .grid > .card-bg p.text-lg {
+    font-size: 0.95rem !important;
+  }
+  #playersDirectory > .grid > .card-bg .w-10.h-10 {
+    width: 2.15rem !important;
+    height: 2.15rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* النوافذ بحجم الشاشة كاملة على الهاتف مع ترويسة مريحة */
+  .modal-backdrop {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+  .modal-backdrop > div {
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 100dvh !important;
+    min-height: 100dvh;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow-y: auto;
+    padding: 1.1rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* أهداف لمس مريحة */
+  button {
+    min-height: 40px;
+  }
+
+  /* معاينة الوصل والتقارير تُمرَّر أفقياً */
+  .rcpt {
+    max-width: none;
+  }
+}
+
+/* زر تثبيت التطبيق فوق شريط التنقل السفلي */
+#pwaInstallBtn {
+  position: fixed;
+  left: 12px;
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  z-index: 45;
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  color: #fff;
+  font-weight: 900;
+  font-size: 12.5px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  box-shadow: 0 8px 24px rgba(2, 8, 23, 0.65);
+}

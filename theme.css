@@ -1,0 +1,969 @@
+/* =========================================================
+   theme.css - طبقة الجمال الفاخرة لـ Power Gym (تدعم كل الواجهات)
+   تضم:
+   1) بطاقة البروفايل العصرية (.card / .card__img / .card__avatar / .card__btn)
+   2) تذكرة العضوية الهولوغرامية المثقبة (.pg-holo-ticket / .holographic / .barcode)
+   3) زر تسجيل لاعب المستقبلي المضلع (#clip / .pg-cyber-btn / .corner / .arrow)
+   4) قائمة الخيارات المنزلقة المتوهجة (.radio-container / .glider-container / .glider)
+   5) البطاقة العائمة ذات الأيقونة البارزة (.pg-floating-emblem-card)
+   ========================================================= */
+
+:root {
+  --pg-accent: #38bdf8;
+  --pg-blue: #2563eb;
+  --pg-glow: rgba(37, 99, 235, 0.35);
+}
+
+/* إضاءة خلفية ناعمة بدل الخلفية المسطحة */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(37, 99, 235, 0.28), transparent 42%),
+    radial-gradient(circle at 88% 85%, rgba(56, 189, 248, 0.18), transparent 46%);
+}
+
+/* ---------- الغلاف الرئيسي (Hero) ---------- */
+.pg-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  box-shadow: 0 25px 60px rgba(2, 8, 23, 0.6);
+  margin-bottom: 1.5rem;
+  min-height: 220px;
+}
+.pg-hero__img {
+  position: absolute;
+  inset: 0;
+  background: url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1600&q=80") center / cover no-repeat;
+  transform: scale(1.04);
+  animation: pgSlowZoom 22s ease-in-out infinite alternate;
+}
+@keyframes pgSlowZoom {
+  to { transform: scale(1.14); }
+}
+.pg-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(7, 17, 31, 0.96) 0%, rgba(7, 17, 31, 0.72) 55%, rgba(37, 99, 235, 0.38) 100%);
+}
+.pg-hero__content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  padding: 28px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+.pg-hero__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #7dd3fc;
+  font-size: 11px;
+  font-weight: 800;
+}
+.pg-hero__title {
+  font-size: clamp(22px, 3.2vw, 34px);
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.25;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+}
+.pg-hero__sub {
+  font-size: 13px;
+  color: #cbd5e1;
+  max-width: 560px;
+}
+.pg-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+}
+.pg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+}
+.pg-btn--ghost {
+  background: rgba(15, 23, 42, 0.68);
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  box-shadow: none;
+  color: #e2e8f0;
+}
+.pg-btn:hover { filter: brightness(1.1); }
+
+/* =========================================================
+   1) زر تسجيل لاعب المستقبلي المضلع (Futuristic Cyber Button)
+   ========================================================= */
+.pg-cyber-btn {
+  position: relative;
+  width: 11.8em;
+  height: 3.7em;
+  outline: none;
+  transition: 0.1s;
+  background-color: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 900;
+  color: #ddebf0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  letter-spacing: 0.2px;
+  z-index: 1;
+}
+
+.pg-cyber-btn--sm {
+  width: 10.6em;
+  height: 3.3em;
+  font-size: 12px;
+}
+
+.pg-cyber-btn--full {
+  width: 100%;
+  max-width: 16em;
+  height: 3.7em;
+  margin-inline: auto;
+  display: flex;
+}
+
+.pg-cyber-btn #clip,
+.pg-cyber-btn .pg-clip {
+  --color: #2761c3;
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  border: 5px double var(--color);
+  box-shadow: inset 0px 0px 15px #195480;
+  -webkit-clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+  clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+  pointer-events: none;
+}
+
+.pg-cyber-btn .arrow {
+  position: absolute;
+  transition: 0.2s;
+  background-color: #2761c3;
+  top: 35%;
+  width: 11%;
+  height: 30%;
+  pointer-events: none;
+}
+
+.pg-cyber-btn #leftArrow,
+.pg-cyber-btn .leftArrow {
+  left: -13.5%;
+  -webkit-clip-path: polygon(100% 0, 100% 100%, 0 50%);
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
+}
+
+.pg-cyber-btn #rightArrow,
+.pg-cyber-btn .rightArrow {
+  -webkit-clip-path: polygon(100% 49%, 0 0, 0 100%);
+  clip-path: polygon(100% 49%, 0 0, 0 100%);
+  left: 102%;
+}
+
+.pg-cyber-btn:hover #rightArrow,
+.pg-cyber-btn:hover .rightArrow {
+  background-color: #27c39f;
+  left: -15%;
+  animation: 0.6s ease-in-out both infinite alternate rightArrow8;
+}
+
+.pg-cyber-btn:hover #leftArrow,
+.pg-cyber-btn:hover .leftArrow {
+  background-color: #27c39f;
+  left: 103%;
+  animation: 0.6s ease-in-out both infinite alternate leftArrow8;
+}
+
+.pg-cyber-btn .corner {
+  position: absolute;
+  width: 4em;
+  height: 4em;
+  background-color: #2761c3;
+  box-shadow: inset 1px 1px 8px #2781c3;
+  transform: scale(1) rotate(45deg);
+  transition: 0.2s;
+}
+
+.pg-cyber-btn #rightTop,
+.pg-cyber-btn .rightTop {
+  top: -1.98em;
+  left: 91%;
+}
+
+.pg-cyber-btn #leftTop,
+.pg-cyber-btn .leftTop {
+  top: -1.96em;
+  left: -3.0em;
+}
+
+.pg-cyber-btn #leftBottom,
+.pg-cyber-btn .leftBottom {
+  top: 2.10em;
+  left: -2.15em;
+}
+
+.pg-cyber-btn #rightBottom,
+.pg-cyber-btn .rightBottom {
+  top: 45%;
+  left: 88%;
+}
+
+.pg-cyber-btn:hover #leftTop,
+.pg-cyber-btn:hover .leftTop {
+  animation: 0.1s ease-in-out 0.05s both changeColor8,
+  0.2s linear 0.4s both lightEffect8;
+}
+
+.pg-cyber-btn:hover #rightTop,
+.pg-cyber-btn:hover .rightTop {
+  animation: 0.1s ease-in-out 0.15s both changeColor8,
+  0.2s linear 0.4s both lightEffect8;
+}
+
+.pg-cyber-btn:hover #rightBottom,
+.pg-cyber-btn:hover .rightBottom {
+  animation: 0.1s ease-in-out 0.25s both changeColor8,
+  0.2s linear 0.4s both lightEffect8;
+}
+
+.pg-cyber-btn:hover #leftBottom,
+.pg-cyber-btn:hover .leftBottom {
+  animation: 0.1s ease-in-out 0.35s both changeColor8,
+  0.2s linear 0.4s both lightEffect8;
+}
+
+.pg-cyber-btn:hover .corner {
+  transform: scale(1.25) rotate(45deg);
+}
+
+.pg-cyber-btn:hover #clip,
+.pg-cyber-btn:hover .pg-clip {
+  animation: 0.2s ease-in-out 0.55s both greenLight8;
+  --color: #27c39f;
+}
+
+@keyframes changeColor8 {
+  from { background-color: #2781c3; }
+  to { background-color: #27c39f; }
+}
+
+@keyframes lightEffect8 {
+  from { box-shadow: 1px 1px 5px #27c39f; }
+  to { box-shadow: 0 0 2px #27c39f; }
+}
+
+@keyframes greenLight8 {
+  from {}
+  to { box-shadow: inset 0px 0px 32px #27c39f; }
+}
+
+@keyframes leftArrow8 {
+  from { transform: translate(0px); }
+  to { transform: translateX(10px); }
+}
+
+@keyframes rightArrow8 {
+  from { transform: translate(0px); }
+  to { transform: translateX(-10px); }
+}
+
+/* =========================================================
+   2) بطاقة اللاعب الاحترافية (.card / .card__img / .card__avatar / .card__btn)
+   ========================================================= */
+.card.pg-profile-card {
+  --main-color: #f8fafc;
+  --submain-color: #94a3b8;
+  --bg-color: rgba(10, 21, 38, 0.95);
+  --card-accent: #38bdf8;
+  font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: relative;
+  width: 100%;
+  min-height: 410px;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 22px;
+  background: var(--bg-color);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  box-shadow: 0 18px 45px rgba(2, 8, 23, 0.45);
+  overflow: hidden;
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.card.pg-profile-card.pg-status-soon {
+  --card-accent: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.card.pg-profile-card.pg-status-expired {
+  --card-accent: #ef4444;
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+.card.pg-profile-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0 0 1px var(--card-accent), 0 24px 55px rgba(2, 8, 23, 0.65);
+}
+
+.card.pg-profile-card .card__img {
+  height: 118px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.card.pg-profile-card .card__img svg {
+  height: 100%;
+  width: 100%;
+  display: block;
+  border-radius: 20px 20px 0 0;
+}
+
+.card.pg-profile-card .card__top-bar {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2;
+}
+
+.card.pg-profile-card .card__avatar {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin-top: -48px;
+  background: #07111f;
+  border-radius: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 3px solid var(--card-accent);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+  z-index: 3;
+  flex-shrink: 0;
+}
+
+.card.pg-profile-card .card__avatar img,
+.card.pg-profile-card .card__avatar svg,
+.card.pg-profile-card .card__avatar .pg-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 100%;
+  object-fit: cover;
+}
+
+.card.pg-profile-card .card__title {
+  margin-top: 10px;
+  font-weight: 900;
+  font-size: 17px;
+  color: var(--main-color);
+  text-align: center;
+  padding: 0 12px;
+}
+
+.card.pg-profile-card .card__subtitle {
+  margin-top: 4px;
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--submain-color);
+  text-align: center;
+  padding: 0 12px;
+}
+
+.card.pg-profile-card .card__body-content {
+  width: 100%;
+  padding: 12px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.card__btn {
+  min-width: 74px;
+  height: 34px;
+  padding: 0 10px;
+  border: 2px solid var(--card-accent, #38bdf8);
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--main-color, #fff);
+  background: rgba(15, 23, 42, 0.85);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.card__btn-solid {
+  background: var(--card-accent, #2563eb);
+  color: #04101f !important;
+  font-weight: 900;
+}
+
+.card__btn:hover {
+  background: var(--card-accent, #38bdf8);
+  color: #04101f !important;
+}
+
+.card__btn-solid:hover {
+  background: transparent;
+  color: var(--main-color, #fff) !important;
+}
+
+/* =========================================================
+   3) تذكرة العضوية الهولوغرامية المثقبة (.pg-holo-ticket / .holographic / .barcode)
+   ========================================================= */
+.pg-holo-ticket {
+  --width: 340px;
+  --height: 495px;
+  --perforation-size: 12px;
+  --cutouts-adjust: 88px;
+
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.65rem;
+  grid-template-areas:
+    "header"
+    "body"
+    "footer";
+
+  width: min(100%, var(--width));
+  min-height: var(--height);
+  margin-inline: auto;
+  padding: calc(var(--perforation-size) + 6px) 0;
+
+  font-family: 'Cairo', "Inter", sans-serif;
+  font-size: 1rem;
+  user-select: none;
+  overflow: hidden;
+  border-radius: 20px;
+
+  filter: drop-shadow(0 2px 1px #00000025) drop-shadow(0 4px 3px #00000025)
+    drop-shadow(0 10px 9px #00000025) drop-shadow(0 20px 20px #00000025)
+    drop-shadow(0 30px 30px #00000035);
+  animation: pgTicketHover 3.5s ease infinite;
+  will-change: transform, filter;
+}
+
+@keyframes pgTicketHover {
+  50% {
+    filter: drop-shadow(0 4px 3px #00000015) drop-shadow(0 6px 6px #00000015)
+      drop-shadow(0 16px 14px #00000015) drop-shadow(0 30px 28px #00000015);
+    transform: translateY(-5px) scale(1.015);
+  }
+}
+
+.pg-holo-ticket .bg {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: #0b172a;
+  -webkit-mask:
+    radial-gradient(circle at 50% 0, #fff0 calc(var(--perforation-size) - 5px), #000 calc(var(--perforation-size) - 4px)),
+    radial-gradient(circle at 50% 100%, #fff0 calc(var(--perforation-size) - 5px), #000 calc(var(--perforation-size) - 4px));
+  mask:
+    radial-gradient(circle at 50% 0, #fff0 calc(var(--perforation-size) - 5px), #000 calc(var(--perforation-size) - 4px)),
+    radial-gradient(circle at 50% 100%, #fff0 calc(var(--perforation-size) - 5px), #000 calc(var(--perforation-size) - 4px));
+}
+
+.pg-holo-ticket .holographic {
+  background-image:
+    linear-gradient(to bottom, rgba(7, 17, 31, 0.86) 0%, rgba(11, 25, 48, 0.9) 72%, rgba(255, 255, 255, 0.94) 73%, rgba(241, 245, 249, 0.97) 100%),
+    conic-gradient(
+      at 60% 50%,
+      #ccc,
+      #ff6bfe,
+      #00f9f8,
+      #ddd,
+      #0081fd,
+      #eef0bc,
+      #0081fd,
+      #ff6bfe,
+      #0002,
+      #0081fd,
+      #ddd,
+      #01fefb,
+      #ccc
+    );
+  border: 2px solid rgba(56, 189, 248, 0.55);
+}
+
+.pg-holo-ticket .holographic::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 70% 20%, rgba(255, 0, 255, 0.22), #0000),
+    repeating-radial-gradient(circle at 30% 80%, rgba(56, 189, 248, 0.18), rgba(37, 99, 235, 0.22) 48px, rgba(238, 238, 238, 0.1) 150px);
+  pointer-events: none;
+}
+
+.pg-holo-ticket .holographic::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(125deg, transparent 20%, rgba(56, 189, 248, 0.16) 40%, rgba(255, 107, 254, 0.14) 60%, transparent 80%);
+  animation: bg-pos 3.5s ease-in-out infinite alternate;
+  background-position: 0 0;
+  background-size: 100% 300%;
+  background-repeat: repeat;
+  pointer-events: none;
+}
+
+@keyframes bg-pos {
+  to { background-position: 0 420px; }
+}
+
+/* فتحات التذكرة الجانبية وخط القطع المنقط */
+.pg-holo-ticket__notch-left,
+.pg-holo-ticket__notch-right {
+  position: absolute;
+  bottom: 122px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #07111f;
+  border: 2px solid rgba(56, 189, 248, 0.5);
+  z-index: 3;
+}
+.pg-holo-ticket__notch-left { left: -12px; }
+.pg-holo-ticket__notch-right { right: -12px; }
+
+.pg-holo-ticket__perf-line {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 132px;
+  border-top: 2px dashed rgba(56, 189, 248, 0.45);
+  z-index: 2;
+}
+
+.pg-holo-ticket .header {
+  position: relative;
+  grid-area: header;
+  margin: 0 14px;
+  text-align: center;
+  z-index: 2;
+}
+
+.pg-holo-ticket .body {
+  grid-area: body;
+  margin: 0 14px;
+  padding: 0.4em 0.6em;
+  z-index: 2;
+}
+
+.pg-holo-ticket .footer {
+  grid-area: footer;
+  z-index: 2;
+  margin: 0.5em 1em 0.3em;
+  padding-top: 0.65em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pg-holo-ticket .number {
+  margin-bottom: 0.45rem;
+  text-align: center;
+  color: #090d16;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.pg-holo-ticket .number .bold {
+  font-weight: 900;
+  color: #1d4ed8;
+}
+
+.pg-holo-ticket .barcode {
+  justify-self: center;
+  width: 0;
+  height: 30px;
+  box-shadow:
+    0px 0 0 1px #090d16,
+    5px 0 0 1px #090d16,
+    7px 0 0 1px #090d16,
+    11px 0 0 1px #090d16,
+    15px 0 0 1px #090d16,
+    16px 0 0 1px #090d16,
+    22px 0 0 1px #090d16,
+    27px 0 0 1px #090d16,
+    30px 0 0 1px #090d16,
+    35px 0 0 1px #090d16,
+    36px 0 0 1px #090d16,
+    39px 0 0 1px #090d16,
+    43px 0 0 1px #090d16,
+    47px 0 0 1px #090d16,
+    50px 0 0 1px #090d16,
+    55px 0 0 1px #090d16,
+    59px 0 0 1px #090d16,
+    60px 0 0 1px #090d16,
+    64px 0 0 1px #090d16,
+    69px 0 0 1px #090d16,
+    70px 0 0 1px #090d16,
+    74px 0 0 1px #090d16;
+  transform: translateX(37px);
+}
+
+/* =========================================================
+   4) الخيارات المنزلقة المتوهجة (.radio-container / .glider-container / .glider)
+   ========================================================= */
+.radio-container {
+  --main-color: #f7e479;
+  --main-color-opacity: #f7e4791c;
+  --total-radio: 4;
+
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-right: 0.75rem;
+  padding-left: 0.5rem;
+  background: rgba(7, 17, 31, 0.85);
+  border: 1px solid rgba(51, 65, 85, 0.75);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.radio-container.pg-radio-blue {
+  --main-color: #38bdf8;
+  --main-color-opacity: rgba(56, 189, 248, 0.16);
+}
+
+.radio-container input[type="radio"] {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.radio-container .glider-container {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(27, 27, 27, 1) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  width: 3px;
+}
+
+.radio-container .glider-container .glider {
+  position: relative;
+  height: calc(100% / var(--total-radio));
+  width: 100%;
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0) 0%,
+    var(--main-color) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  transition: transform 0.45s cubic-bezier(0.37, 1.95, 0.66, 0.56);
+}
+
+.radio-container .glider-container .glider::before {
+  content: "";
+  position: absolute;
+  height: 60%;
+  width: 300%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--main-color);
+  filter: blur(8px);
+}
+
+.radio-container .glider-container .glider::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  height: 100%;
+  width: 180px;
+  background: linear-gradient(
+    270deg,
+    var(--main-color-opacity) 0%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.radio-container label {
+  cursor: pointer;
+  padding: 0.68rem 0.9rem;
+  position: relative;
+  color: #94a3b8;
+  font-size: 12.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.25s ease-in-out;
+  z-index: 1;
+}
+
+.radio-container label:hover {
+  color: #e2e8f0;
+}
+
+.radio-container input:checked + label {
+  color: var(--main-color);
+  font-weight: 900;
+}
+
+.radio-container input:nth-of-type(1):checked ~ .glider-container .glider { transform: translateY(0); }
+.radio-container input:nth-of-type(2):checked ~ .glider-container .glider { transform: translateY(100%); }
+.radio-container input:nth-of-type(3):checked ~ .glider-container .glider { transform: translateY(200%); }
+.radio-container input:nth-of-type(4):checked ~ .glider-container .glider { transform: translateY(300%); }
+.radio-container input:nth-of-type(5):checked ~ .glider-container .glider { transform: translateY(400%); }
+.radio-container input:nth-of-type(6):checked ~ .glider-container .glider { transform: translateY(500%); }
+.radio-container input:nth-of-type(7):checked ~ .glider-container .glider { transform: translateY(600%); }
+.radio-container input:nth-of-type(8):checked ~ .glider-container .glider { transform: translateY(700%); }
+.radio-container input:nth-of-type(9):checked ~ .glider-container .glider { transform: translateY(800%); }
+.radio-container input:nth-of-type(10):checked ~ .glider-container .glider { transform: translateY(900%); }
+
+/* ---------- بطاقات الإحصائيات ---------- */
+#playersDirectory > .grid > .card-bg {
+  background: linear-gradient(145deg, rgba(15, 30, 55, 0.95), rgba(7, 17, 31, 0.92));
+  position: relative;
+  overflow: hidden;
+}
+#playersDirectory > .grid > .card-bg::after {
+  content: '';
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  left: -30px;
+  bottom: -30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.18), transparent 70%);
+  pointer-events: none;
+}
+#playersDirectory > .grid > .card-bg:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.22);
+}
+#playersDirectory > .grid > .card-bg p.text-2xl,
+#playersDirectory > .grid > .card-bg p.text-lg {
+  font-variant-numeric: tabular-nums;
+}
+
+/* صورة بديلة بالحروف الأولى */
+.pg-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(135deg, hsl(var(--hue, 210) 85% 60%), hsl(calc(var(--hue, 210) + 40) 80% 45%));
+  letter-spacing: 0.5px;
+}
+.pg-avatar--card { width: 84px; height: 84px; font-size: 24px; }
+.pg-avatar--lg { width: 96px; height: 96px; font-size: 30px; }
+
+/* شريط تقدّم الاشتراك */
+.pg-progress {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(51, 65, 85, 0.55);
+  overflow: hidden;
+}
+.pg-progress > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--p, 0%);
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #2563eb);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+  transition: width 600ms ease;
+}
+.pg-progress--soon > span { background: linear-gradient(90deg, #fde68a, #f59e0b); box-shadow: 0 0 12px rgba(251, 191, 36, 0.6); }
+.pg-progress--expired > span { background: linear-gradient(90deg, #fca5a5, #dc2626); box-shadow: 0 0 12px rgba(248, 113, 113, 0.6); }
+
+/* الجدول */
+#playersTableContainer { background: linear-gradient(160deg, rgba(15, 30, 55, 0.92), rgba(7, 17, 31, 0.94)); }
+#playersTableContainer tbody tr { transition: background-color 150ms ease; }
+#playersTableContainer tbody tr:hover { background: rgba(37, 99, 235, 0.1); }
+
+/* ---------- الشريط الجانبي ---------- */
+#desktopSidebar {
+  background: linear-gradient(180deg, rgba(7, 17, 31, 0.98), rgba(4, 12, 24, 0.98));
+}
+#desktopSidebar .sidebar-link {
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+#desktopSidebar .sidebar-link:hover {
+  transform: translateX(-3px);
+}
+
+/* ---------- شريط البحث والفلترة ---------- */
+#playersDirectory > .card-bg {
+  background: rgba(7, 17, 31, 0.85);
+}
+
+/* ---------- النوافذ ---------- */
+.modal-backdrop {
+  background: rgba(3, 8, 18, 0.78);
+}
+#monthlyReportModal .card-bg,
+#playerModal .card-bg {
+  background: linear-gradient(160deg, rgba(15, 30, 55, 0.98), rgba(7, 17, 31, 0.98));
+}
+
+/* ---------- التجاوب عبر كافة الشاشات (موبايل / تابلت / ديسكتوب) ---------- */
+@media (max-width: 640px) {
+  .pg-hero { border-radius: 22px; min-height: 180px; }
+  .pg-hero__content { padding: 20px; }
+  .pg-hero__sub { font-size: 12px; }
+  .pg-cyber-btn { width: 10.4em; height: 3.3em; font-size: 11.5px; }
+  .pg-holo-ticket { --width: 315px; --height: 475px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-hero__img, .pg-holo-ticket, .pg-holo-ticket .holographic::after { animation: none; }
+  .card.pg-profile-card, #playersDirectory > .grid > .card-bg { transition: none; }
+}
+
+/* =========================================================
+   Power Gym 2.2 — واجهة موحّدة أكثر هدوءاً ووضوحاً
+   طبقة تحسين بصرية لا تغيّر منطق البيانات أو أسماء العناصر.
+   ========================================================= */
+:root {
+  color-scheme: dark;
+  --pg-accent: #35d0b0;
+  --pg-blue: #258bdb;
+  --pg-line: rgba(148, 180, 205, .16);
+  --pg-surface: rgba(11, 23, 39, .94);
+  --pg-surface-soft: rgba(17, 34, 54, .78);
+  --pg-shadow: 0 18px 48px rgba(0, 0, 0, .28);
+}
+html { background: #071321; }
+body {
+  background-color: #071321 !important;
+  background-image:
+    radial-gradient(ellipse at 12% 0%, rgba(24, 105, 135, .22), transparent 38%),
+    radial-gradient(ellipse at 95% 88%, rgba(24, 91, 145, .16), transparent 42%),
+    linear-gradient(145deg, #071321 0%, #0a1929 55%, #081522 100%) !important;
+  background-attachment: fixed;
+}
+body::before { opacity: .55; }
+.card-bg {
+  background: linear-gradient(145deg, rgba(15, 31, 49, .96), rgba(9, 22, 37, .94)) !important;
+  border: 1px solid var(--pg-line) !important;
+  border-radius: 19px;
+  box-shadow: var(--pg-shadow);
+  backdrop-filter: blur(18px);
+}
+#desktopSidebar {
+  background: rgba(6, 17, 29, .97) !important;
+  border-color: rgba(53, 208, 176, .14) !important;
+  box-shadow: -18px 0 55px rgba(0,0,0,.22) !important;
+}
+.sidebar-link {
+  border-radius: 12px;
+  padding: .78rem .9rem;
+  color: #c5d2df;
+}
+.sidebar-link i { color: #53cbb5; }
+.sidebar-link:hover, .sidebar-link:focus-visible {
+  background: linear-gradient(90deg, rgba(35, 139, 219, .14), rgba(53, 208, 176, .08));
+  border-color: rgba(53, 208, 176, .2);
+}
+.pg-hero {
+  border-color: rgba(74, 196, 181, .24);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.32);
+}
+.pg-hero::after {
+  background: linear-gradient(90deg, rgba(5, 17, 29, .97) 0%, rgba(5, 20, 34, .82) 58%, rgba(14, 92, 112, .35) 100%);
+}
+.pg-hero__kicker {
+  color: #8ce8d5;
+  background: rgba(53, 208, 176, .1);
+  border-color: rgba(53, 208, 176, .24);
+}
+.gold-gradient, .pg-btn:not(.pg-btn--ghost) {
+  background: linear-gradient(130deg, #27b99f, #1687c9 90%) !important;
+  box-shadow: 0 9px 24px rgba(18, 150, 158, .22);
+}
+button, .sidebar-link, .mnav-btn, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+input, select, textarea {
+  border-color: rgba(148, 180, 205, .22) !important;
+  background-color: rgba(5, 17, 29, .78) !important;
+  color: #edf5fb !important;
+  border-radius: 11px !important;
+}
+input::placeholder, textarea::placeholder { color: #7f93a8 !important; }
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(53, 208, 176, .72) !important;
+  box-shadow: 0 0 0 3px rgba(53, 208, 176, .1) !important;
+  outline: none;
+}
+button:not(:disabled) { border-radius: 11px; }
+.modal-backdrop { background: rgba(2, 9, 17, .84) !important; backdrop-filter: blur(10px); }
+.modal-backdrop > div { border: 1px solid rgba(148, 180, 205, .16); box-shadow: 0 28px 80px rgba(0,0,0,.5); }
+#mobileBottomNav {
+  background: rgba(5, 17, 29, .97);
+  border-top-color: rgba(53, 208, 176, .2);
+}
+.mnav-btn i { color: #70a9c4; }
+.mnav-btn.is-active { background: rgba(53, 208, 176, .1); }
+.mnav-btn.is-active i { color: #53d8bb; }
+::-webkit-scrollbar-thumb { background: #24566b; }
+::-webkit-scrollbar-thumb:hover { background: #35bfa8; }
+::selection { background: rgba(53, 208, 176, .28); color: #fff; }
+@media (max-width: 640px) {
+  .card-bg { border-radius: 16px; }
+  .pg-hero { min-height: 158px !important; }
+  .pg-hero__content { padding: 17px 18px !important; }
+  #mobileBottomNav { padding-top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
