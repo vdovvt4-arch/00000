@@ -1,7 +1,7 @@
 // Service Worker - Power Gym (نسخة الويب/الهاتف PWA)
 // - ملفات التطبيق: الشبكة أولاً ثم النسخة المخزنة (لتصل التحديثات ويعمل بدون إنترنت)
 // - ملفات الـ CDN (Tailwind / الخطوط / الأيقونات): من الذاكرة أولاً مع تحديث بالخلفية
-const CACHE_NAME = 'power-gym-web-v10';
+const CACHE_NAME = 'power-gym-web-v11';
 const LOCAL_ASSETS = [
   './',
   './index.html',
@@ -24,7 +24,7 @@ const LOCAL_ASSETS = [
   './icon-512.png',
   './apple-touch-icon.png'
 ];
-const CDN_HOSTS = ['cdn.tailwindcss.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com'];
+const CDN_HOSTS = ['cdn.tailwindcss.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'images.unsplash.com'];
 
 self.addEventListener('install', event => {
   event.waitUntil(

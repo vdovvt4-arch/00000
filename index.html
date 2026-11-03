@@ -431,7 +431,9 @@
     
     <!-- الغلاف الرئيسي -->
     <section class="pg-hero" aria-label="ترحيب">
-      <div class="pg-hero__img"></div>
+      <div class="pg-hero__img" aria-hidden="true">
+        <img id="heroSlideshowImage" class="pg-hero__photo" src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&amp;fit=crop&amp;w=1600&amp;q=80" alt="" fetchpriority="high">
+      </div>
       <div class="pg-hero__content">
         <span class="pg-hero__kicker"><i class="fa-solid fa-bolt"></i> لوحة المشرف</span>
         <h2 class="pg-hero__title">أهلاً بك في <span class="text-sky-300">Power Gym</span></h2>
@@ -452,12 +454,15 @@
           <button onclick="openMonthlyReportModal()" class="pg-btn pg-btn--ghost"><i class="fa-solid fa-file-lines"></i>التقرير الشهري</button>
           <button onclick="runThreeDayCountdownReminders(false)" class="pg-btn pg-btn--ghost"><i class="fa-solid fa-bell"></i>التذكيرات</button>
         </div>
+        <div class="pg-hero__carousel" role="group" aria-label="صور تتغير تلقائياً من أجواء النادي">
+          <span id="heroSlideStatus" aria-live="off" aria-atomic="true">صورة 1 من 3</span>
+        </div>
       </div>
     </section>
 
     <!-- بطاقات الإحصائيات الأساسية + المالية القابلة للتعديل -->
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-6">
-      <div onclick="setFilter('all')" class="card-bg p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-blue-500 cursor-pointer hover:border-blue-400 transition">
+      <button type="button" onclick="setFilter('all')" aria-label="عرض جميع اللاعبين" class="card-bg w-full p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-blue-500 text-right cursor-pointer hover:border-blue-400 transition">
         <div>
           <p class="text-slate-400 text-[11px] font-bold">إجمالي اللاعبين</p>
           <p id="statTotal" class="text-2xl font-black text-white mt-1">0</p>
@@ -465,9 +470,9 @@
         <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-lg">
           <i class="fa-solid fa-users"></i>
         </div>
-      </div>
+      </button>
 
-      <div onclick="setFilter('active')" class="card-bg p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-emerald-500 cursor-pointer hover:border-emerald-400 transition">
+      <button type="button" onclick="setFilter('active')" aria-label="عرض اللاعبين أصحاب الاشتراكات الفعالة" class="card-bg w-full p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-emerald-500 text-right cursor-pointer hover:border-emerald-400 transition">
         <div>
           <p class="text-slate-400 text-[11px] font-bold">اشتراك فعال</p>
           <p id="statActive" class="text-2xl font-black text-emerald-400 mt-1">0</p>
@@ -475,9 +480,9 @@
         <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
           <i class="fa-solid fa-circle-check"></i>
         </div>
-      </div>
+      </button>
 
-      <div onclick="setFilter('soon')" class="card-bg p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-amber-500 cursor-pointer hover:border-amber-400 transition" title="اللاعبين الذين ينتهي اشتراكهم خلال 3 أيام (يرسل لهم البوت 3 إشعارات يومية)">
+      <button type="button" onclick="setFilter('soon')" aria-label="عرض اللاعبين الذين تنتهي اشتراكاتهم خلال ثلاثة أيام" class="card-bg w-full p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-amber-500 text-right cursor-pointer hover:border-amber-400 transition" title="اللاعبين الذين ينتهي اشتراكهم خلال 3 أيام (يرسل لهم البوت 3 إشعارات يومية)">
         <div>
           <p class="text-slate-400 text-[11px] font-bold">ينتهي قريباً (3 أيام)</p>
           <p id="statSoon" class="text-2xl font-black text-amber-400 mt-1">0</p>
@@ -485,9 +490,9 @@
         <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
           <i class="fa-solid fa-bell"></i>
         </div>
-      </div>
+      </button>
 
-      <div onclick="setFilter('expired')" class="card-bg p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-red-500 cursor-pointer hover:border-red-400 transition">
+      <button type="button" onclick="setFilter('expired')" aria-label="عرض اللاعبين أصحاب الاشتراكات المنتهية" class="card-bg w-full p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-red-500 text-right cursor-pointer hover:border-red-400 transition">
         <div>
           <p class="text-slate-400 text-[11px] font-bold">اشتراك منتهي</p>
           <p id="statExpired" class="text-2xl font-black text-red-500 mt-1">0</p>
@@ -495,9 +500,9 @@
         <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center text-lg">
           <i class="fa-solid fa-circle-xmark"></i>
         </div>
-      </div>
+      </button>
 
-      <div onclick="openFinanceModal('profits')" class="card-bg p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-purple-500 cursor-pointer hover:border-purple-400 transition group" title="اضغط لتعديل الأرباح والإيرادات والمصاريف">
+      <button type="button" onclick="openFinanceModal('profits')" aria-label="فتح الأرباح والإيرادات والمصاريف" class="card-bg w-full p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-purple-500 text-right cursor-pointer hover:border-purple-400 transition group" title="اضغط لفتح الأرباح والإيرادات والمصاريف">
         <div>
           <div class="flex items-center gap-1">
             <p class="text-slate-400 text-[11px] font-bold">صافي الأرباح</p>
@@ -508,9 +513,9 @@
         <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg">
           <i class="fa-solid fa-sack-dollar"></i>
         </div>
-      </div>
+      </button>
 
-      <div onclick="openFinanceModal('debts')" class="card-bg p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-rose-500 cursor-pointer hover:border-rose-400 transition group" title="اضغط لتعديل ديون اللاعبين أو تسديدها">
+      <button type="button" onclick="openFinanceModal('debts')" aria-label="فتح ديون اللاعبين وتسديدها" class="card-bg w-full p-4 rounded-2xl flex items-center justify-between border-r-4 border-r-rose-500 text-right cursor-pointer hover:border-rose-400 transition group" title="اضغط لفتح ديون اللاعبين أو تسديدها">
         <div>
           <div class="flex items-center gap-1">
             <p class="text-slate-400 text-[11px] font-bold">الديون المتبقية</p>
@@ -521,7 +526,7 @@
         <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-lg">
           <i class="fa-solid fa-hand-holding-dollar"></i>
         </div>
-      </div>
+      </button>
     </div>
 
     <!-- شريط البحث والفلترة والترتيب وطريقة العرض -->
@@ -654,6 +659,7 @@
           <div>
             <label class="block text-xs font-bold text-slate-300 mb-1">رقم الموبايل العراقي (واتساب + تفعيل التلي) *</label>
             <input type="tel" id="playerPhone" required maxlength="15" oninput="handlePhoneInputLookup(this.value)" placeholder="07801234567" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:border-amber-500 focus:outline-none text-left text-white" dir="ltr">
+            <p class="mt-1 text-[10px] text-slate-400">اكتب الرقم العراقي حتى يطابقه النظام مع رقم اللاعب الذي ربط حسابه ببوت التليكرام.</p>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-300 mb-1">نوع الاشتراك / القسم</label>
@@ -674,7 +680,7 @@
               <span>ربط تليكرام اللاعب وإرسال رسالة التفعيل + إشعارات الـ 3 أيام</span>
             </span>
             <span id="playerTelegramLinkBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
-              يربط تلقائياً برقم الهاتف 📲
+              بانتظار بدء اللاعب للبوت ومشاركة رقمه
             </span>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
@@ -687,8 +693,9 @@
           </div>
           <label class="flex items-center gap-2 text-xs text-slate-200 font-bold cursor-pointer pt-1">
             <input type="checkbox" id="sendActivationOnSave" checked class="accent-amber-500 w-4 h-4 rounded">
-            <span>إرسال رسالة تفعيل الاشتراك للاعب على التليكرام فور الحفظ (مع تذكير الـ 3 أيام قبل الانتهاء)</span>
+            <span>إرسال تفاصيل الاشتراك عند الحفظ؛ تصل للاعب مباشرة إذا كان قد ربط التليكرام، وإلا تصلك رسالة فيها رابط التفعيل</span>
           </label>
+          <p class="text-[10px] text-slate-400">حتى يستقبل اللاعب رسائل التليكرام، يجب أن يبدأ البوت ويشارك رقم هاتفه. التذكير عبر واتساب يفتح رسالة جاهزة ويحتاج ضغط إرسال من الكابتن.</p>
         </div>
 
         <div class="grid grid-cols-2 gap-4">

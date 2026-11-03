@@ -43,6 +43,36 @@ body::before {
   transform: scale(1.04);
   animation: pgSlowZoom 22s ease-in-out infinite alternate;
 }
+.pg-hero__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity .65s ease;
+}
+.pg-hero__photo.is-visible { opacity: 1; }
+.pg-hero__carousel {
+  position: absolute;
+  z-index: 2;
+  inset-inline: 14px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.pg-hero__carousel span {
+  padding: 3px 9px;
+  border: 1px solid rgba(250,204,21,.24);
+  border-radius: 999px;
+  background: rgba(8,9,7,.58);
+  color: #fff0a3;
+  font-size: 10px;
+  font-weight: 800;
+}
 @keyframes pgSlowZoom {
   to { transform: scale(1.14); }
 }

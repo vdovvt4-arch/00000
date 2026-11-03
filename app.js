@@ -1238,6 +1238,14 @@
                 </button>
               ` : ''}
               ${hasDebt ? `
+                <button type="button" onclick="sendPlayerDebtReminderById('${safeId}', 'whatsapp')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-black px-3 py-2 rounded-xl mt-3.5 transition" title="فتح تذكير الدين في واتساب لمراجعته وإرساله">
+                  <i class="fa-brands fa-whatsapp ml-1" aria-hidden="true"></i>تذكير واتساب
+                </button>
+                <button type="button" onclick="sendPlayerDebtReminderById('${safeId}', 'telegram')" class="bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 font-black px-3 py-2 rounded-xl mt-3.5 transition" title="إرسال تذكير الدين إلى حساب اللاعب المرتبط بالتليكرام">
+                  <i class="fa-brands fa-telegram ml-1" aria-hidden="true"></i>تذكير تليكرام
+                </button>
+              ` : ''}
+              ${hasDebt ? `
                 <div class="flex items-end gap-1.5">
                   <div>
                     <label class="block text-[10px] text-blue-300 font-bold">تحصيل جزئي (د.ع)</label>
@@ -1451,6 +1459,31 @@
       const botDeepLink = `https://t.me/${BOT_USERNAME}?start=ACT_${intlPhone}`;
       const message = `السلام عليكم كابتن ${player.name} الحبيب 💪🔥،\nتم تفعيل/تحديث بيانات اشتراكك في *${gymProfile.gymName}* (${gymProfile.gymBranch}).\n📅 تاريخ البدء: ${player.startDate}\n⏳ المدة: ${player.durationMonths} شهر\n🏁 تاريخ الانتهاء (شوكت يخلص): ${player.endDate}\n\n📲 اضغط على الرابط التالي لتفعيل إشعارات اشتراكك على بوت التليكرام:\n${botDeepLink}`;
       return `https://wa.me/${intlPhone}?text=${encodeURIComponent(message)}`;
+    }
+
+    function openWhatsAppLink(url) {
+      let whatsappUrl;
+      try {
+        whatsappUrl = new URL(url, window.location.href);
+      } catch {
+        showToast('تعذر تجهيز رابط واتساب؛ تحقق من رقم اللاعب.', 'warning');
+        return false;
+      }
+
+      if (whatsappUrl.protocol !== 'https:' || !['wa.me', 'api.whatsapp.com'].includes(whatsappUrl.hostname)) {
+        showToast('رابط واتساب غير صالح.', 'warning');
+        return false;
+      }
+
+      const popup = window.open(whatsappUrl.href, '_blank');
+      if (popup) {
+        popup.opener = null;
+        return true;
+      }
+
+      // Some mobile browsers block popups; continue in the current tab on an explicit user action.
+      window.location.assign(whatsappUrl.href);
+      return false;
     }
 
     // البحث الفوري عن معرف تليكرام اللاعب عند إدخال الكابتن لرقم الموبايل
@@ -1777,13 +1810,20 @@
               return;
             }
             if (shouldSendActivation) {
-              const fileId = await sendPlayerActivationMessage(updatedPlayer, true);
-              if (fileId) updatedPlayer.telegramFileId = fileId;
-              updatedPlayer.activationSent = true;
+              const delivery = await sendPlayerActivationMessage(updatedPlayer, true);
+              if (delivery.photoFileId) updatedPlayer.telegramFileId = delivery.photoFileId;
+              updatedPlayer.activationSent = delivery.sentToPlayer;
               savePlayersToStorage();
+              const message = delivery.sentToPlayer
+                ? `تم تحديث بيانات البطل "${updatedPlayer.name}" وإرسال التفعيل له على التليكرام ✅`
+                : delivery.sentToCaptain
+                  ? `تم تحديث بيانات "${updatedPlayer.name}"؛ أُرسل رابط التفعيل للكابتن، واللاعب يحتاج ربط التليكرام أولاً.`
+                  : `تم تحديث بيانات "${updatedPlayer.name}"، لكن تعذر إرسال التليكرام؛ تحقق من إعدادات البوت.`;
+              showToast(message, delivery.sentToPlayer ? 'success' : 'warning');
+            } else {
+              showToast(`تم حفظ تعديلات البطل "${updatedPlayer.name}" بنجاح ✅`, 'success');
             }
             logActivity(`تعديل بيانات اللاعب: ${updatedPlayer.name} (${updatedPlayer.code})`);
-            showToast(shouldSendActivation ? `تم تحديث بيانات البطل "${updatedPlayer.name}" وإرسال إشعار التفعيل ✅` : `تم حفظ تعديلات البطل "${updatedPlayer.name}" بنجاح ✅`, 'success');
           }
         } else {
           const newPlayer = sanitizePlayerRecord({
@@ -1820,13 +1860,20 @@
             return;
           }
           if (shouldSendActivation) {
-            const fileId = await sendPlayerActivationMessage(newPlayer, false);
-            if (fileId) newPlayer.telegramFileId = fileId;
-            newPlayer.activationSent = true;
+            const delivery = await sendPlayerActivationMessage(newPlayer, false);
+            if (delivery.photoFileId) newPlayer.telegramFileId = delivery.photoFileId;
+            newPlayer.activationSent = delivery.sentToPlayer;
             savePlayersToStorage();
+            const message = delivery.sentToPlayer
+              ? `تم تسجيل "${newPlayer.name}" وإرسال التفعيل له على التليكرام ✅`
+              : delivery.sentToCaptain
+                ? `تم تسجيل "${newPlayer.name}"؛ أُرسل رابط التفعيل للكابتن، واللاعب يحتاج ربط التليكرام أولاً.`
+                : `تم تسجيل "${newPlayer.name}"، لكن تعذر إرسال التليكرام؛ تحقق من إعدادات البوت.`;
+            showToast(message, delivery.sentToPlayer ? 'success' : 'warning');
+          } else {
+            showToast(`تم تسجيل وحفظ البطل "${newPlayer.name}" بنجاح 💪`, 'success');
           }
           logActivity(`إضافة لاعب جديد: ${newPlayer.name} (${newPlayer.code})`);
-          showToast(shouldSendActivation ? `تم تسجيل البطل "${newPlayer.name}" وإرسال رسالة التفعيل للتليكرام 💪🔥` : `تم تسجيل وحفظ البطل "${newPlayer.name}" بنجاح 💪`, 'success');
         }
 
         closePlayerModal();
@@ -1941,11 +1988,16 @@
       if (window.__skipRenewTelegramOnce) {
         showToast(`تم تجديد وحفظ اشتراك البطل "${players[idx].name}" لغاية ${endDate} ✅`, 'success');
       } else {
-        showToast(`تم تجديد اشتراك البطل "${players[idx].name}" لغاية ${endDate} وإرسال التفعيل 🎉`, 'success');
-        const fileId = await sendPlayerActivationMessage(players[idx], true);
-        if (fileId) players[idx].telegramFileId = fileId;
-        players[idx].activationSent = true;
+        const delivery = await sendPlayerActivationMessage(players[idx], true);
+        if (delivery.photoFileId) players[idx].telegramFileId = delivery.photoFileId;
+        players[idx].activationSent = delivery.sentToPlayer;
         savePlayersToStorage();
+        const message = delivery.sentToPlayer
+          ? `تم تجديد اشتراك "${players[idx].name}" وإرسال التفعيل له على التليكرام ✅`
+          : delivery.sentToCaptain
+            ? `تم تجديد الاشتراك؛ أُرسل رابط التفعيل للكابتن، واللاعب يحتاج ربط التليكرام أولاً.`
+            : `تم تجديد الاشتراك، لكن تعذر إرسال التليكرام؛ تحقق من إعدادات البوت.`;
+        showToast(message, delivery.sentToPlayer ? 'success' : 'warning');
       }
     }
 
@@ -2209,10 +2261,10 @@
               <div class="card__top-bar">
                 <div class="flex items-center gap-1.5">
                   <span class="text-[10px] font-black px-2 py-0.5 rounded-lg bg-slate-950/85 text-sky-300 border border-sky-400/30 shadow" dir="ltr">${escapeHtml(player.code || 'PG')}</span>
-                  <button onclick="openEditModal('${safeId}')" class="w-7 h-7 rounded-lg bg-slate-950/75 hover:bg-slate-900 text-slate-200 flex items-center justify-center text-[11px] transition" title="تعديل">
+                  <button type="button" onclick="openEditModal('${safeId}')" class="w-7 h-7 rounded-lg bg-slate-950/75 hover:bg-slate-900 text-slate-200 flex items-center justify-center text-[11px] transition" title="تعديل بيانات اللاعب" aria-label="تعديل بيانات اللاعب ${escapeHtml(player.name)}">
                     <i class="fa-solid fa-pen-to-square"></i>
                   </button>
-                  <button onclick="deletePlayer('${safeId}')" class="w-7 h-7 rounded-lg bg-slate-950/75 hover:bg-red-600/80 text-red-300 hover:text-white flex items-center justify-center text-[11px] transition" title="حذف">
+                  <button type="button" onclick="deletePlayer('${safeId}')" class="w-7 h-7 rounded-lg bg-slate-950/75 hover:bg-red-600/80 text-red-300 hover:text-white flex items-center justify-center text-[11px] transition" title="حذف اللاعب" aria-label="حذف اللاعب ${escapeHtml(player.name)}">
                     <i class="fa-solid fa-trash-can"></i>
                   </button>
                 </div>
@@ -2303,19 +2355,19 @@
                   <i class="fa-brands fa-whatsapp text-emerald-400 text-sm"></i>
                 </a>
 
-                <button onclick="checkInPlayerToday('${safeId}')" class="card__btn !min-w-[40px] !px-2.5 ${checkedInToday ? '!border-emerald-400 !text-emerald-300' : ''}" title="تسجيل حضور اليوم">
+                <button type="button" onclick="checkInPlayerToday('${safeId}')" class="card__btn !min-w-[40px] !px-2.5 ${checkedInToday ? '!border-emerald-400 !text-emerald-300' : ''}" title="${checkedInToday ? 'تم تسجيل الحضور اليوم' : 'تسجيل حضور اليوم'}" aria-label="${checkedInToday ? 'حضور اللاعب مسجل اليوم' : 'تسجيل حضور اللاعب اليوم'}: ${escapeHtml(player.name)}">
                   <i class="fa-solid fa-calendar-check"></i>
                 </button>
 
-                <button onclick="openIdCardModal('${safeId}')" class="card__btn !min-w-[40px] !px-2.5" title="تذكرة العضوية الهولوغرامية VIP">
+                <button type="button" onclick="openIdCardModal('${safeId}')" class="card__btn !min-w-[40px] !px-2.5" title="عرض وطباعة بطاقة العضوية" aria-label="عرض بطاقة عضوية اللاعب ${escapeHtml(player.name)}">
                   <i class="fa-solid fa-id-card text-sky-300"></i>
                 </button>
 
-                <button onclick="openPlayerCourseModal('${safeId}')" class="card__btn !min-w-[40px] !px-2.5" title="ملف الكورس والصور">
+                <button type="button" onclick="openPlayerCourseModal('${safeId}')" class="card__btn !min-w-[40px] !px-2.5" title="عرض وتعديل الكورس والصور" aria-label="فتح ملف كورس اللاعب ${escapeHtml(player.name)}">
                   <i class="fa-solid fa-notes-medical text-amber-300"></i>
                 </button>
 
-                <button onclick="sendThreeDayReminderToPlayerById('${safeId}')" class="card__btn !min-w-[40px] !px-2.5" title="إرسال إشعار التذكير بالانتهاء">
+                <button type="button" onclick="sendThreeDayReminderToPlayerById('${safeId}')" class="card__btn !min-w-[40px] !px-2.5" title="إرسال تذكير بانتهاء الاشتراك" aria-label="إرسال تذكير بانتهاء اشتراك اللاعب ${escapeHtml(player.name)}">
                   <i class="fa-solid fa-bell text-amber-400"></i>
                 </button>
               </div>
@@ -2361,12 +2413,12 @@
             <td class="p-3">
               <div class="flex items-center justify-center gap-1.5">
                 <button onclick="${player.activationSent ? 'sendSubscriptionAlertById' : 'sendPlayerActivationMessageById'}('${safeId}')" class="${player.activationSent ? 'bg-sky-600' : 'bg-blue-600'} text-white p-2 rounded-lg" title="${player.activationSent ? 'إرسال تنبيه اشتراك' : 'إرسال رسالة تفعيل للتلي'}"><i class="fa-brands fa-telegram"></i></button>
-                <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 text-white p-2 rounded-lg"><i class="fa-brands fa-whatsapp"></i></a>
-                <button onclick="openRenewModal('${safeId}')" class="bg-amber-500/20 text-amber-400 p-2 rounded-lg"><i class="fa-solid fa-arrows-rotate"></i></button>
-                <button onclick="openIdCardModal('${safeId}')" class="bg-purple-500/20 text-purple-400 p-2 rounded-lg"><i class="fa-solid fa-id-card"></i></button>
-                <button onclick="openPlayerCourseModal('${safeId}')" class="bg-blue-500/20 text-blue-300 p-2 rounded-lg" title="ملف الكورس"><i class="fa-solid fa-notes-medical"></i></button>
-                <button onclick="openEditModal('${safeId}')" class="bg-slate-800 text-slate-300 p-2 rounded-lg"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button onclick="deletePlayer('${safeId}')" class="bg-red-500/20 text-red-400 p-2 rounded-lg"><i class="fa-solid fa-trash-can"></i></button>
+                <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 text-white p-2 rounded-lg" title="التواصل مع ${escapeHtml(player.name)} عبر واتساب" aria-label="واتساب ${escapeHtml(player.name)}"><i class="fa-brands fa-whatsapp"></i></a>
+                <button type="button" onclick="openRenewModal('${safeId}')" class="bg-amber-500/20 text-amber-400 p-2 rounded-lg" title="تجديد الاشتراك" aria-label="تجديد اشتراك ${escapeHtml(player.name)}"><i class="fa-solid fa-arrows-rotate"></i></button>
+                <button type="button" onclick="openIdCardModal('${safeId}')" class="bg-purple-500/20 text-purple-400 p-2 rounded-lg" title="عرض بطاقة العضوية" aria-label="عرض بطاقة عضوية ${escapeHtml(player.name)}"><i class="fa-solid fa-id-card"></i></button>
+                <button type="button" onclick="openPlayerCourseModal('${safeId}')" class="bg-blue-500/20 text-blue-300 p-2 rounded-lg" title="عرض ملف الكورس" aria-label="فتح ملف كورس ${escapeHtml(player.name)}"><i class="fa-solid fa-notes-medical"></i></button>
+                <button type="button" onclick="openEditModal('${safeId}')" class="bg-slate-800 text-slate-300 p-2 rounded-lg" title="تعديل بيانات اللاعب" aria-label="تعديل بيانات ${escapeHtml(player.name)}"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button type="button" onclick="deletePlayer('${safeId}')" class="bg-red-500/20 text-red-400 p-2 rounded-lg" title="حذف اللاعب" aria-label="حذف ${escapeHtml(player.name)}"><i class="fa-solid fa-trash-can"></i></button>
               </div>
             </td>
           </tr>
@@ -2399,7 +2451,7 @@
         }
 
         if (data.ok && Array.isArray(data.result) && data.result.length > 0) {
-          let newlyLinkedCount = 0;
+          let linkedPlayerCount = 0;
 
           for (const upd of data.result) {
             telegramDirectory.lastUpdateOffset = Math.max(telegramDirectory.lastUpdateOffset || 0, upd.update_id + 1);
@@ -2454,10 +2506,14 @@
               const matchedPlayer = players.find(p => formatIraqiPhone(p.phone) === detectedPhone);
               if (matchedPlayer) {
                 matchedPlayer.playerChatId = senderChatId;
-                matchedPlayer.activationSent = true;
-                newlyLinkedCount++;
-                await sendDirectTelegramMessageToPlayer(matchedPlayer, buildPlayerActivationText(matchedPlayer));
-                showToast(`تم ربط تليكرام البطل "${matchedPlayer.name}" وإرسال رسالة التفعيل له تلقائياً! 🎉`, 'success');
+                linkedPlayerCount++;
+                const sent = await sendDirectTelegramMessageToPlayer(matchedPlayer, buildPlayerActivationText(matchedPlayer));
+                if (sent) {
+                  matchedPlayer.activationSent = true;
+                  showToast(`تم ربط تليكرام اللاعب "${matchedPlayer.name}" وإرسال رسالة التفعيل له ✅`, 'success');
+                } else {
+                  showToast(`تم ربط رقم "${matchedPlayer.name}" بالتليكرام، لكن تعذر إرسال التفعيل؛ سيُعاد المحاولة.`, 'warning');
+                }
               } else {
                 await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                   method: 'POST',
@@ -2480,9 +2536,7 @@
           }
 
           saveTelegramDirectoryToStorage();
-          if (newlyLinkedCount > 0) {
-            savePlayersToStorage();
-          }
+          if (linkedPlayerCount > 0) savePlayersToStorage();
         }
 
         if (!silent) {
@@ -2589,24 +2643,86 @@
       if (/^9647\d{9}$/.test(intlPhone)) {
         const whatsappText = `السلام عليكم ${player.name}، تم ${action === 'payment' ? 'تسجيل تسديد' : 'تسجيل دين'} في ${gymProfile.gymName}.\nالتفاصيل: ${description}\nالمبلغ: ${Number(amount).toLocaleString('en-US')} د.ع\nالرصيد المتبقي: ${Number(player.debtAmount || 0).toLocaleString('en-US')} د.ع\nرقم العضوية: ${player.code}`;
         const whatsappUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(whatsappText)}`;
-        const whatsappWindow = window.open(whatsappUrl, '_blank');
-        if (whatsappWindow) whatsappWindow.opener = null;
-        showToast(whatsappWindow
+        const openedInNewTab = openWhatsAppLink(whatsappUrl);
+        showToast(openedInNewTab
           ? `لا يوجد Telegram مربوط للاعب ${player.name}؛ فُتح WhatsApp برسالة جاهزة. تحقق من إمكانية التواصل عبر الرقم.`
-          : `لا يوجد Telegram مربوط للاعب ${player.name}؛ تعذر فتح WhatsApp تلقائياً، ورقم الهاتف متوفر للإرسال اليدوي.`, 'warning');
+          : `لا يوجد Telegram مربوط للاعب ${player.name}؛ جارٍ فتح WhatsApp في الصفحة الحالية.`, 'warning');
         return;
       }
 
       showToast(`لم يصل إشعار إلى ${player.name}: لا يوجد Telegram مربوط ولا رقم صالح لـ WhatsApp.`, 'warning');
     }
 
+    async function sendPlayerDebtReminderById(playerId, channel) {
+      const player = players.find(item => item.id === sanitizeId(playerId));
+      if (!player) return;
+      const debt = Number(player.debtAmount) || 0;
+      if (debt <= 0) {
+        showToast(`لا يوجد دين مستحق على ${player.name}.`, 'info');
+        return;
+      }
+
+      const intlPhone = formatIraqiPhone(player.phone);
+      if (!/^9647\d{9}$/.test(intlPhone)) {
+        showToast(`رقم هاتف ${player.name} غير صالح؛ حدّث الرقم العراقي أولاً.`, 'warning');
+        return;
+      }
+
+      const plainText = [
+        `السلام عليكم ${player.name}،`,
+        `تذكير من ${gymProfile.gymName} بوجود رصيد مستحق على حسابك.`,
+        `💰 الرصيد المتبقي: ${debt.toLocaleString('en-US')} د.ع`,
+        `🆔 رقم العضوية: ${player.code}`,
+        'إذا تم التسديد، يرجى إبلاغ الإدارة لتحديث الحساب.'
+      ].join('\n');
+
+      if (channel === 'whatsapp') {
+        const openedInNewTab = openWhatsAppLink(`https://wa.me/${intlPhone}?text=${encodeURIComponent(plainText)}`);
+        if (openedInNewTab) {
+          logActivity(`فتح تذكير دين عبر WhatsApp للاعب: ${player.name}`);
+          showToast('فُتحت رسالة الدين في واتساب؛ راجعها واضغط إرسال.', 'success');
+        } else {
+          logActivity(`فتح تذكير دين عبر WhatsApp للاعب: ${player.name}`);
+          showToast('جارٍ فتح رسالة الدين في الصفحة الحالية؛ راجعها واضغط إرسال.', 'info');
+        }
+        return;
+      }
+
+      if (channel !== 'telegram') return;
+      let linkedChatId = player.playerChatId || telegramDirectory?.phoneToChatId?.[intlPhone]?.chatId || '';
+      if (!linkedChatId) {
+        await pollBotUpdatesForPlayers(true);
+        linkedChatId = player.playerChatId || telegramDirectory?.phoneToChatId?.[intlPhone]?.chatId || '';
+      }
+      if (!linkedChatId) {
+        showToast(`لم يرتبط ${player.name} ببوت التليكرام بعد؛ اطلب منه بدء البوت ومشاركة رقمه.`, 'warning');
+        return;
+      }
+
+      const htmlText = [
+        `مرحباً كابتن <b>${escapeTelegramHtml(player.name)}</b>،`,
+        `هذا تذكير من <b>${escapeTelegramHtml(gymProfile.gymName)}</b> بوجود رصيد مستحق على حسابك.`,
+        `💰 الرصيد المتبقي: <b>${debt.toLocaleString('en-US')} د.ع</b>`,
+        `🆔 رقم العضوية: <code>${escapeTelegramHtml(player.code)}</code>`,
+        'إذا تم التسديد، يرجى إبلاغ الإدارة لتحديث الحساب.'
+      ].join('\n');
+      const sent = await sendDirectTelegramMessageToPlayer(player, htmlText);
+      if (sent) {
+        logActivity(`إرسال تذكير دين عبر Telegram للاعب: ${player.name}`);
+        showToast(`تم إرسال تذكير الدين إلى Telegram للاعب ${player.name}.`, 'success');
+      } else {
+        showToast(`تعذر إرسال تذكير الدين إلى ${player.name} عبر Telegram؛ تحقق من إعدادات البوت والاتصال.`, 'error');
+      }
+    }
+
     // إرسال رسالة تفعيل الاشتراك للاعب + نسخة للكابتن عند إدخال الرقم وحفظ اللاعب
     async function sendPlayerActivationMessage(player, isUpdate = false) {
+      const delivery = { sentToCaptain: false, sentToPlayer: false, photoFileId: '' };
       let { botToken, chatId } = getTelegramSettings();
       if (botToken && !chatId) {
         chatId = await autoDetectChatId(true);
       }
-      if (!botToken || !chatId) return '';
+      if (!botToken || !chatId) return delivery;
 
       const intlPhone = formatIraqiPhone(player.phone);
       const matchedChatId = player.playerChatId || telegramDirectory?.phoneToChatId?.[intlPhone]?.chatId || '';
@@ -2620,6 +2736,7 @@
       // 1. إذا كان اللاعب مربوطاً بالبوت، يرسل البوت رسالة التفعيل لحساب اللاعب مباشرة
       if (player.playerChatId && String(player.playerChatId) !== String(chatId)) {
         sentDirectlyToPlayer = await sendDirectTelegramMessageToPlayer(player, activationText);
+        delivery.sentToPlayer = sentDirectlyToPlayer;
       }
 
       // 2. إرسال بطاقة التفعيل والتوثيق إلى تليكرام الكابتن مع أزرار التفعيل السريع للاعب
@@ -2659,10 +2776,12 @@
 
           if (data.ok && data.result && data.result.photo) {
             const photos = data.result.photo;
-            return photos[photos.length - 1].file_id;
+            delivery.photoFileId = photos[photos.length - 1].file_id;
+            delivery.sentToCaptain = true;
           }
+          if (!delivery.sentToCaptain) console.warn('Telegram activation photo was rejected:', data.description || 'Unknown error');
         } else {
-          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2672,11 +2791,14 @@
               reply_markup: JSON.parse(replyMarkup)
             })
           });
+          const data = await response.json();
+          delivery.sentToCaptain = Boolean(data.ok);
+          if (!delivery.sentToCaptain) console.warn('Telegram activation message was rejected:', data.description || 'Unknown error');
         }
       } catch (err) {
         console.error('Telegram activation error:', err);
       }
-      return '';
+      return delivery;
     }
 
     async function sendPlayerActivationMessageById(playerId) {
@@ -2684,11 +2806,23 @@
       if (!player) return;
       showToast(`جاري إرسال رسالة تفعيل الاشتراك للبطل "${player.name}" على التليكرام... 📲`, 'info');
       await pollBotUpdatesForPlayers(true);
-      await sendPlayerActivationMessage(player, false);
-      player.activationSent = true;
+      if (player.activationSent) {
+        showToast(`تم إرسال رسالة التفعيل للاعب "${player.name}" عند ربط رقمه بالتليكرام.`, 'success');
+        return;
+      }
+      const delivery = await sendPlayerActivationMessage(player, false);
+      if (delivery.photoFileId) player.telegramFileId = delivery.photoFileId;
+      player.activationSent = delivery.sentToPlayer;
       savePlayersToStorage();
-      logActivity(`إرسال رسالة تفعيل التليكرام للاعب: ${player.name}`);
-      showToast(`تم إرسال رسالة التفعيل للبطل "${player.name}" عبر بوت التليكرام بنجاح! ✅`, 'success');
+      if (delivery.sentToPlayer) {
+        logActivity(`إرسال رسالة تفعيل التليكرام للاعب: ${player.name}`);
+        showToast(`تم إرسال رسالة التفعيل للاعب "${player.name}" عبر التليكرام ✅`, 'success');
+      } else if (delivery.sentToCaptain) {
+        logActivity(`إرسال رابط تفعيل للاعب إلى الكابتن: ${player.name}`);
+        showToast(`أُرسل رابط التفعيل للكابتن؛ على اللاعب بدء البوت ومشاركة رقمه حتى تصله الرسائل مباشرة.`, 'warning');
+      } else {
+        showToast('تعذر إرسال رسالة التفعيل؛ تحقق من توكن البوت ومعرف الكابتن والاتصال.', 'error');
+      }
     }
 
     // نص تنبيه حالة الاشتراك (يُرسل للاعب المفعَّل مسبقاً) - تليكرام HTML
@@ -2750,7 +2884,7 @@
       }
       if (confirm(`تعذر الإرسال عبر التليكرام (اللاعب غير مربوط بالبوت أو لا يوجد اتصال).\nهل تريد إرسال التنبيه لـ "${player.name}" عبر واتساب؟`)) {
         logActivity(`إرسال تنبيه اشتراك عبر واتساب للاعب: ${player.name}`);
-        window.open(generateWhatsAppAlertLink(player), '_blank', 'noopener');
+        openWhatsAppLink(generateWhatsAppAlertLink(player));
       }
     }
 
@@ -2788,7 +2922,7 @@
       if (botToken && !chatId) {
         chatId = await autoDetectChatId(true);
       }
-      if (!botToken || !chatId) return false;
+      if (!botToken) return false;
 
       const reminderOrderNum =
         diffDays >= 3 ? 1 :
@@ -2804,6 +2938,8 @@
       if (player.playerChatId && String(player.playerChatId) !== String(chatId)) {
         sentToPlayerDirect = await sendDirectTelegramMessageToPlayer(player, reminderHtml);
       }
+      if (silent && !sentToPlayerDirect) return false;
+      if (!chatId) return sentToPlayerDirect;
 
       const waReminderText = `السلام عليكم كابتن ${player.name} الحبيب 💪🔥،\nإشعار تذكير (${reminderOrderNum} من 3) من *${gymProfile.gymName}*: تبقى (${diffDays} يوم) على انتهاء اشتراكك الذي يخلص بتاريخ ${player.endDate}. ننتظرك بالجم لتجديد الاشتراك يا بطل! 🏋️‍♂️`;
       const waLink = `https://wa.me/${intlPhone}?text=${encodeURIComponent(waReminderText)}`;
@@ -2834,14 +2970,19 @@
         const data = await res.json();
         if (data.ok) {
           if (!silent) {
-            showToast(`تم إرسال إشعار التذكير (${reminderOrderNum}/3) للبطل "${player.name}" على التليكرام 🔔`, 'success');
+            showToast(
+              sentToPlayerDirect
+                ? `تم إرسال إشعار التذكير (${reminderOrderNum}/3) للاعب "${player.name}" على التليكرام 🔔`
+                : `أُرسل تذكير واتساب للكابتن؛ يجب الضغط على زر واتساب لإرساله إلى "${player.name}".`,
+              sentToPlayerDirect ? 'success' : 'warning'
+            );
           }
-          return true;
+          return sentToPlayerDirect;
         }
       } catch (e) {
         console.error('3-day reminder error:', e);
       }
-      return false;
+      return sentToPlayerDirect;
     }
 
     async function sendThreeDayReminderToPlayerById(playerId) {
