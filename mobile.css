@@ -55,6 +55,26 @@ button, a, select, label, input {
     align-items: center;
     gap: 4px;
   }
+
+  #desktopSidebar {
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  #desktopSidebar:not(.hidden) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #desktopSidebar nav {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
 }
 
 .mnav-btn {
@@ -119,6 +139,10 @@ button, a, select, label, input {
 
 /* ---------- تحسينات الشاشات الصغيرة (الهواتف الذكية) ---------- */
 @media (max-width: 640px) {
+  body {
+    background-attachment: scroll !important;
+  }
+
   /* منع تكبير iOS التلقائي عند الكتابة */
   input, select, textarea {
     font-size: 16px !important;
@@ -199,6 +223,29 @@ button, a, select, label, input {
   /* معاينة الوصل والتقارير تُمرَّر أفقياً */
   .rcpt {
     max-width: none;
+  }
+}
+
+@media (max-width: 380px) {
+  header .pg-cyber-btn--sm {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0 !important;
+    justify-content: center;
+    color: #111008 !important;
+    background: #facc15 !important;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(250, 204, 21, 0.2);
+  }
+
+  header .pg-cyber-btn--sm > span:first-of-type {
+    display: none;
+  }
+
+  header .pg-cyber-btn--sm .pg-clip,
+  header .pg-cyber-btn--sm .arrow {
+    display: none;
   }
 }
 

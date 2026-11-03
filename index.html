@@ -7,13 +7,14 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Power Gym">
-  <link rel="apple-touch-icon" sizes="180x180" href="build/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <!-- سياسة أمان المحتوى (CSP) للحماية من حقن السكربتات الخارجية -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://cdn-icons-png.flaticon.com https://api.qrserver.com https://images.unsplash.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; connect-src 'self' https://api.telegram.org;">
   <title>Power Gym - بور جم | المنظومة الذكية المتكاملة لإدارة القاعة</title>
   <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#07111f">
+  <meta name="theme-color" content="#111008">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="mobile.css">
@@ -40,9 +41,9 @@
             cairo: ['Cairo', 'sans-serif'],
           },
           colors: {
-            gymDark: '#0f172a',
-            gymBlack: '#07111f',
-            gymGold: '#2563eb',
+            gymDark: '#111008',
+            gymBlack: '#090a08',
+            gymGold: '#facc15',
           }
         }
       }
@@ -52,9 +53,9 @@
   <style>
     body {
       font-family: 'Cairo', sans-serif;
-      background-color: #07111f;
+      background-color: #090a08;
       background-image:
-        linear-gradient(115deg, rgba(3, 8, 18, 0.92), rgba(4, 18, 38, 0.76)),
+        linear-gradient(115deg, rgba(3, 4, 3, 0.94), rgba(20, 17, 7, 0.78)),
         url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1920&q=85");
       background-size: cover;
       background-position: center;
@@ -67,12 +68,12 @@
     .card-bg {
       background: rgba(7, 17, 31, 0.9);
       backdrop-filter: blur(16px);
-      border: 1px solid rgba(59, 130, 246, 0.22);
+      border: 1px solid rgba(250, 204, 21, 0.2);
       box-shadow: 0 18px 50px rgba(2, 8, 23, 0.24);
     }
 
     .gold-gradient {
-      background: linear-gradient(135deg, #38bdf8 0%, #2563eb 55%, #1d4ed8 100%);
+      background: linear-gradient(135deg, #facc15 0%, #eab308 55%, #b98900 100%);
     }
 
     .modal-backdrop {
@@ -96,18 +97,18 @@
 
     .sidebar-link i {
       width: 1.15rem;
-      color: #60a5fa;
+      color: #facc15;
       text-align: center;
     }
 
     .sidebar-link:hover {
-      border-color: rgba(59, 130, 246, 0.22);
-      background: rgba(37, 99, 235, 0.12);
+      border-color: rgba(250, 204, 21, 0.22);
+      background: rgba(250, 204, 21, 0.1);
       color: #fff;
     }
 
     .sidebar-link:hover i {
-      color: #7dd3fc;
+      color: #fde68a;
     }
 
     #desktopSidebar nav section + section {
@@ -128,7 +129,7 @@
       border-radius: 4px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #38bdf8;
+      background: #facc15;
     }
 
     button:not(:disabled), a, input, select, textarea {
@@ -140,34 +141,34 @@
     }
 
     button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-      outline: 2px solid #38bdf8;
+      outline: 2px solid #facc15;
       outline-offset: 2px;
     }
 
     [class~="text-amber-300"], [class~="text-amber-400"], [class~="text-amber-500"], [class~="text-amber-600"] {
-      color: #38bdf8 !important;
+      color: #facc15 !important;
     }
     [class~="bg-amber-500"], [class~="bg-amber-400"] {
-      background-color: #2563eb !important;
+      background-color: #facc15 !important;
     }
     [class~="bg-amber-500"][class~="text-black"], [class~="bg-amber-400"][class~="text-black"] {
-      color: #fff !important;
+      color: #111008 !important;
     }
-    [class~="bg-amber-500/10"] { background-color: rgba(37, 99, 235, 0.1) !important; }
-    [class~="bg-amber-500/15"] { background-color: rgba(37, 99, 235, 0.15) !important; }
-    [class~="bg-amber-500/20"] { background-color: rgba(37, 99, 235, 0.2) !important; }
-    [class~="bg-amber-500/25"] { background-color: rgba(37, 99, 235, 0.25) !important; }
-    [class~="bg-amber-500/30"] { background-color: rgba(37, 99, 235, 0.3) !important; }
+    [class~="bg-amber-500/10"] { background-color: rgba(250, 204, 21, 0.1) !important; }
+    [class~="bg-amber-500/15"] { background-color: rgba(250, 204, 21, 0.15) !important; }
+    [class~="bg-amber-500/20"] { background-color: rgba(250, 204, 21, 0.2) !important; }
+    [class~="bg-amber-500/25"] { background-color: rgba(250, 204, 21, 0.25) !important; }
+    [class~="bg-amber-500/30"] { background-color: rgba(250, 204, 21, 0.3) !important; }
     [class~="border-amber-500"], [class~="border-amber-500/30"], [class~="border-amber-500/40"] {
-      border-color: rgba(56, 189, 248, 0.55) !important;
+      border-color: rgba(250, 204, 21, 0.55) !important;
     }
     [class~="shadow-amber-500/20"], [class~="shadow-amber-500/25"], [class~="shadow-amber-500/30"] {
-      --tw-shadow-color: rgba(37, 99, 235, 0.28) !important;
+      --tw-shadow-color: rgba(250, 204, 21, 0.28) !important;
     }
-    [class~="hover:bg-amber-500"]:hover { background-color: #1d4ed8 !important; }
-    [class~="hover:bg-amber-500/25"]:hover { background-color: rgba(37, 99, 235, 0.25) !important; }
-    [class~="hover:bg-amber-500/30"]:hover { background-color: rgba(37, 99, 235, 0.3) !important; }
-    [class~="focus:border-amber-500"]:focus { border-color: #38bdf8 !important; }
+    [class~="hover:bg-amber-500"]:hover { background-color: #d6a900 !important; }
+    [class~="hover:bg-amber-500/25"]:hover { background-color: rgba(250, 204, 21, 0.25) !important; }
+    [class~="hover:bg-amber-500/30"]:hover { background-color: rgba(250, 204, 21, 0.3) !important; }
+    [class~="focus:border-amber-500"]:focus { border-color: #facc15 !important; }
 
     @media print {
       body * {
@@ -297,6 +298,10 @@
 
   <!-- إشعارات علوية (Toast Container) -->
   <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-auto md:right-6 md:w-96 z-50 flex flex-col gap-2 pointer-events-none"></div>
+  <div id="networkStatus" class="network-status hidden" role="status" aria-live="polite">
+    <i class="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i>
+    <span>غير متصل بالإنترنت — بياناتك المحلية متاحة</span>
+  </div>
 
   <div id="mobileMenuBackdrop" class="fixed inset-0 z-40 hidden bg-slate-950/75 backdrop-blur-sm lg:hidden" onclick="closeMobileMenu()"></div>
   <aside id="desktopSidebar" class="fixed right-0 top-0 bottom-0 z-50 hidden w-72 flex-col border-l border-blue-500/20 bg-slate-950/95 shadow-2xl backdrop-blur-xl lg:z-30 lg:flex">
@@ -400,7 +405,7 @@
         <button type="button" onclick="if(typeof openPrivacyCardModal==='function') openPrivacyCardModal();" title="حالة الخصوصية والتخزين المستقل" class="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-slate-900/90 hover:bg-slate-800 px-3 py-1.5 text-[11px] font-bold text-sky-300 transition">
           <i class="fa-solid fa-shield-heart text-amber-400"></i><span>الخصوصية والحفظ</span>
         </button>
-        <button onclick="openAddModal()" class="pg-cyber-btn pg-cyber-btn--sm">
+        <button onclick="openAddModal()" aria-label="تسجيل لاعب جديد" title="تسجيل لاعب جديد" class="pg-cyber-btn pg-cyber-btn--sm">
           <i class="fa-solid fa-user-plus text-sky-300"></i>
           <span>تسجيل لاعب</span>
           <div class="pg-clip">
@@ -525,7 +530,7 @@
         <!-- حقل البحث الفوري -->
         <div class="relative w-full lg:w-96">
           <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-3.5 text-slate-400"></i>
-          <input type="text" id="searchInput" oninput="renderPlayers()" placeholder="ابحث بالاسم، رقم الموبايل، أو كود اللاعب..." class="w-full bg-slate-900 border border-slate-700 rounded-xl pr-10 pl-4 py-2.5 text-sm focus:outline-none focus:border-amber-500 text-white">
+          <input type="text" id="searchInput" oninput="renderPlayers()" aria-keyshortcuts="/" title="بحث سريع — اضغط / للانتقال إلى البحث" placeholder="ابحث بالاسم، رقم الموبايل، أو كود اللاعب..." class="w-full bg-slate-900 border border-slate-700 rounded-xl pr-10 pl-4 py-2.5 text-sm focus:outline-none focus:border-amber-500 text-white">
         </div>
 
         <!-- أزرار الفلترة -->
@@ -615,14 +620,23 @@
 
         <!-- رفع الصورة -->
         <div class="flex flex-col items-center">
-          <label for="playerPhotoInput" class="cursor-pointer group relative">
+          <label for="playerPhotoInput" class="cursor-pointer group relative" title="التقاط صورة بالكاميرا">
             <img id="photoPreview" src="https://cdn-icons-png.flaticon.com/512/847/847969.png" alt="صورة اللاعب" class="w-24 h-24 rounded-full object-cover border-2 border-amber-500 p-0.5 bg-slate-800">
             <div class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
               <i class="fa-solid fa-camera text-white text-xl"></i>
             </div>
           </label>
           <input type="file" id="playerPhotoInput" accept="image/jpeg,image/png,image/webp" capture="environment" class="hidden" onchange="handleImageUpload(event)">
-          <span class="text-xs text-slate-400 mt-2">اضغط على الدائرة لالتقاط أو رفع صورة اللاعب (تُضغط تلقائياً)</span>
+          <input type="file" id="playerPhotoGalleryInput" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="handleImageUpload(event)">
+          <div class="mt-3 grid w-full max-w-sm grid-cols-2 gap-2">
+            <button type="button" onclick="document.getElementById('playerPhotoInput').click()" class="flex min-h-10 items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-300">
+              <i class="fa-solid fa-camera" aria-hidden="true"></i>التقاط صورة
+            </button>
+            <button type="button" onclick="document.getElementById('playerPhotoGalleryInput').click()" class="flex min-h-10 items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-300">
+              <i class="fa-solid fa-images" aria-hidden="true"></i>اختيار من الجهاز
+            </button>
+          </div>
+          <span class="mt-2 text-center text-xs text-slate-400">الصيغ المدعومة JPG وPNG وWebP — تُضغط الصورة تلقائياً</span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1323,6 +1337,7 @@
   <!-- منطق التطبيق والأمان المتقدم (JavaScript) -->
   <!-- ========================================== -->
   <script src="app.js"></script>
+  <script src="ui-enhancements.js"></script>
   <footer class="mx-auto max-w-7xl px-4 pt-8 pb-6 text-center lg:mr-72">
     <div class="border-t border-blue-500/20 pt-5">
       <p class="text-sm text-slate-400">تقديم <span class="font-black tracking-widest text-blue-300">شركة FRD</span></p>

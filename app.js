@@ -1475,26 +1475,36 @@
     // 8. ضغط وفحص صورة اللاعب عبر Canvas
     // =========================================================
     function handleImageUpload(event) {
-      const file = event.target.files[0];
+      const input = event.currentTarget || event.target;
+      const file = input.files && input.files[0];
       if (!file) return;
+      input.value = '';
 
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        showToast('يرجى اختيار صورة بصيغة JPG أو PNG أو WebP فقط!', 'error');
-        event.target.value = '';
+        showToast('يرجى اختيار صورة بصيغة JPG أو PNG أو WebP فقط.', 'error');
         return;
       }
 
       if (file.size > 15 * 1024 * 1024) {
-        showToast('حجم الصورة كبير جداً (الأقصى 15MB)!', 'error');
-        event.target.value = '';
+        showToast('حجم الصورة كبير جداً؛ الحد الأقصى 15MB.', 'error');
         return;
       }
 
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onerror = function() {
+        showToast('تعذرت قراءة الصورة من الجهاز. حاول اختيار ملف آخر.', 'error');
+      };
+      reader.onload = function() {
         const img = new Image();
+        img.onerror = function() {
+          showToast('ملف الصورة تالف أو غير مدعوم.', 'error');
+        };
         img.onload = function() {
+          if (!img.naturalWidth || !img.naturalHeight) {
+            showToast('تعذر فتح الصورة المختارة.', 'error');
+            return;
+          }
           const canvas = document.createElement('canvas');
           const MAX_SIZE = 450;
           let width = img.width;
@@ -1515,13 +1525,22 @@
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            showToast('تعذر تجهيز الصورة للمعاينة.', 'error');
+            return;
+          }
           ctx.drawImage(img, 0, 0, width, height);
 
-          compressedPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.72);
-          document.getElementById('photoPreview').src = compressedPhotoDataUrl;
-          showToast('تم فحص وضغط صورة اللاعب بنجاح 📸', 'info');
+          try {
+            compressedPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.72);
+            document.getElementById('photoPreview').src = compressedPhotoDataUrl;
+            showToast('تم تجهيز صورة اللاعب وحفظها للمعاينة.', 'success');
+          } catch (error) {
+            console.error('Could not process player photo:', error);
+            showToast('تعذر ضغط الصورة المختارة. جرّب صورة أخرى.', 'error');
+          }
         };
-        img.src = e.target.result;
+        img.src = String(reader.result || '');
       };
       reader.readAsDataURL(file);
     }
@@ -2130,17 +2149,26 @@
       });
 
       if (filtered.length === 0) {
+        const hasPlayers = players.length > 0;
+        const emptyTitle = hasPlayers ? 'ما لقينا لاعبين مطابقين' : 'ابدأ بإضافة أول لاعب';
+        const emptyDescription = hasPlayers
+          ? 'جرّب تغيير البحث أو الفلتر حتى تظهر النتائج.'
+          : 'سجّل بيانات اللاعب واشتراكه حتى تبدأ بمتابعة النادي.';
+        const emptyAction = hasPlayers
+          ? `<button type="button" onclick="document.getElementById('searchInput').value=''; setFilter('all');" class="gold-gradient mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-black"><i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i>مسح البحث والفلاتر</button>`
+          : `<button type="button" onclick="openAddModal()" class="gold-gradient mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-black"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>إضافة أول لاعب</button>`;
         const emptyHtml = `
           <div class="col-span-full card-bg rounded-3xl p-12 text-center border border-dashed border-slate-700">
             <div class="w-16 h-16 rounded-2xl bg-slate-800/80 text-amber-500 flex items-center justify-center text-3xl mx-auto mb-4">
-              <i class="fa-solid fa-dumbbell"></i>
+              <i class="fa-solid ${hasPlayers ? 'fa-filter-circle-xmark' : 'fa-user-plus'}"></i>
             </div>
-            <h3 class="text-lg font-black text-white mb-1">لا توجد نتائج مطابقة</h3>
-            <p class="text-xs text-slate-400">يمكنك إضافة لاعبين جدد أو تغيير خيارات البحث والفلترة.</p>
+            <h3 class="text-lg font-black text-white mb-1">${emptyTitle}</h3>
+            <p class="text-xs text-slate-400">${emptyDescription}</p>
+            ${emptyAction}
           </div>
         `;
         grid.innerHTML = emptyHtml;
-        tableBody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400 font-bold">لا توجد بيانات مطابقة للبحث</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400"><p class="font-bold">${emptyTitle}</p><p class="mt-1 text-xs">${emptyDescription}</p>${emptyAction}</td></tr>`;
         return;
       }
 
