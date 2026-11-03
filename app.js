@@ -5,6 +5,10 @@
     // =========================================================
     const SCHEMA_VERSION = '2.0.0';
     const BOT_USERNAME = 'Powargym_bot';
+    const COACH_MODE = new URLSearchParams(window.location.search).get('pgCoach') === '1';
+    const COACH_PENDING_STORAGE_KEY = 'power_gym_coach_pending_v1';
+    const COACH_GYM_STORAGE_KEY = 'power_gym_coach_gym_id_v1';
+    window.pgCoachRegistrationMode = COACH_MODE;
 
     const STORAGE_KEYS = Object.freeze({
       PLAYERS: 'power_gym_players_v1',
@@ -152,6 +156,7 @@
         activationSent: Boolean(raw.activationSent || raw.telegram?.activationSent),
         threeDayRemindersSent: remindersArr,
         lastReminderDate: isValidDateString(raw.lastReminderDate) ? raw.lastReminderDate : '',
+        coachSubmissionId: String(raw.coachSubmissionId || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100),
         createdAt: String(raw.createdAt || new Date().toISOString()),
         updatedAt: String(raw.updatedAt || new Date().toISOString())
       };
@@ -290,6 +295,12 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
+      if (COACH_MODE) {
+        rememberCoachGymIdFromLink();
+        renderCoachMode();
+        return;
+      }
+
       loadDataFromStorage();
       applyGymBrandingToUI();
       runSmartSplashAnimation();
@@ -526,20 +537,60 @@
     async function updateSecurityPin() {
       const newPin = document.getElementById('newPinInput').value.trim();
       if (!newPin) {
-        localStorage.removeItem(STORAGE_KEYS.PIN_HASH);
-        showToast('تم إلغاء قفل الشاشة برمز PIN', 'info');
-        logActivity('تم إيقاف رمز الحماية PIN');
+        showToast('أدخل رمزاً جديداً، أو استخدم زر حذف الرمز لإلغاء الحماية.', 'warning');
         return;
       }
       if (newPin.length < 4) {
         showToast('يجب أن يتكون رمز PIN من 4 أرقام أو أحرف على الأقل', 'warning');
         return;
       }
-      const hash = await sha256Hash(newPin);
-      localStorage.setItem(STORAGE_KEYS.PIN_HASH, hash);
-      document.getElementById('newPinInput').value = '';
-      showToast('تم تشفير وحفظ رمز الحماية (PIN) بنجاح 🛡️', 'success');
-      logActivity('تم تفعيل/تحديث رمز الحماية PIN');
+      try {
+        const hash = await sha256Hash(newPin);
+        localStorage.setItem(STORAGE_KEYS.PIN_HASH, hash);
+        document.getElementById('newPinInput').value = '';
+        updateSecurityPinStatus();
+        showToast('تم تشفير وحفظ رمز الحماية (PIN) بنجاح 🛡️', 'success');
+        logActivity('تم تفعيل/تحديث رمز الحماية PIN');
+      } catch (error) {
+        console.error('تعذر حفظ رمز الحماية PIN:', error);
+        showToast('تعذر حفظ رمز الحماية. تحقق من إعدادات التخزين في الجهاز.', 'error');
+      }
+    }
+
+    function updateSecurityPinStatus() {
+      const badge = document.getElementById('securityPinStatus');
+      const removeButton = document.getElementById('removeSecurityPinButton');
+      if (!badge || !removeButton) return;
+
+      const isEnabled = Boolean(localStorage.getItem(STORAGE_KEYS.PIN_HASH));
+      badge.textContent = isEnabled ? 'الحماية مفعّلة' : 'الحماية غير مفعّلة';
+      badge.className = isEnabled
+        ? 'rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-300'
+        : 'rounded-full border border-slate-600 bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-400';
+      removeButton.disabled = !isEnabled;
+    }
+
+    function removeSecurityPin() {
+      if (!localStorage.getItem(STORAGE_KEYS.PIN_HASH)) {
+        updateSecurityPinStatus();
+        showToast('لا يوجد رمز حماية محفوظ لحذفه.', 'info');
+        return;
+      }
+      if (!confirm('هل تريد حذف رمز PIN وإيقاف قفل التطبيق على هذا الجهاز؟')) return;
+
+      try {
+        localStorage.removeItem(STORAGE_KEYS.PIN_HASH);
+        document.getElementById('newPinInput').value = '';
+        document.getElementById('unlockPinInput').value = '';
+        document.getElementById('lockErrorMsg').classList.add('hidden');
+        document.getElementById('lockScreenModal').classList.add('hidden');
+        updateSecurityPinStatus();
+        logActivity('تم حذف رمز الحماية PIN وإيقاف قفل التطبيق');
+        showToast('تم حذف رمز الحماية وإلغاء قفل التطبيق.', 'success');
+      } catch (error) {
+        console.error('تعذر حذف رمز الحماية PIN:', error);
+        showToast('تعذر حذف رمز الحماية. لم يتغير قفل التطبيق.', 'error');
+      }
     }
 
     function toggleTokenVisibility() {
@@ -1678,10 +1729,351 @@
     // =========================================================
     // 9. إدارة إضافة / تعديل / تجديد اللاعبين
     // =========================================================
+    function getCoachGymIdFromLink() {
+      const gymId = new URLSearchParams(window.location.search).get('pgGym') || '';
+      return /^[a-zA-Z0-9_-]{12,80}$/.test(gymId) ? gymId : '';
+    }
+
+    function rememberCoachGymIdFromLink() {
+      const gymId = getCoachGymIdFromLink();
+      if (!gymId) return;
+      try {
+        localStorage.setItem(COACH_GYM_STORAGE_KEY, gymId);
+      } catch (error) {
+        console.error('تعذر حفظ رمز النادي لوضع المدرب:', error);
+        showToast('تعذر تهيئة وضع المدرب على هذا الجهاز.', 'error');
+      }
+    }
+
+    function getOrCreateCoachGymId() {
+      try {
+        const existingId = localStorage.getItem(COACH_GYM_STORAGE_KEY);
+        if (existingId && /^[a-zA-Z0-9_-]{12,80}$/.test(existingId)) return existingId;
+
+        const randomPart = window.crypto?.randomUUID
+          ? window.crypto.randomUUID().replace(/-/g, '')
+          : `${Date.now()}${Math.random().toString(36).slice(2)}`;
+        const gymId = `gym_${randomPart}`;
+        localStorage.setItem(COACH_GYM_STORAGE_KEY, gymId);
+        return gymId;
+      } catch (error) {
+        console.error('تعذر إنشاء رمز نادي لوضع المدرب:', error);
+        showToast('تعذر إنشاء رمز المشاركة. تحقق من مساحة التخزين.', 'error');
+        return '';
+      }
+    }
+
+    function getCoachRegistrationUrl() {
+      if (!['http:', 'https:'].includes(window.location.protocol)) return '';
+      const gymId = getOrCreateCoachGymId();
+      if (!gymId) return '';
+      const url = new URL(window.location.pathname, window.location.origin);
+      url.searchParams.set('pgCoach', '1');
+      url.searchParams.set('pgGym', gymId);
+      return url.toString();
+    }
+
+    function readCoachPendingRegistrations() {
+      try {
+        const stored = localStorage.getItem(COACH_PENDING_STORAGE_KEY);
+        if (!stored) return [];
+        const entries = JSON.parse(stored);
+        if (!Array.isArray(entries) || entries.some(entry =>
+          !entry || typeof entry !== 'object' ||
+          typeof entry.gymId !== 'string' ||
+          !entry.player || typeof entry.player !== 'object'
+        )) {
+          throw new TypeError('قائمة تسجيلات المدرب غير صالحة.');
+        }
+        return entries;
+      } catch (error) {
+        console.error('تعذر قراءة تسجيلات المدرب:', error);
+        showToast('تعذر قراءة التسجيلات المحفوظة على هذا الهاتف.', 'error');
+        return null;
+      }
+    }
+
+    function saveCoachPendingRegistrations(entries) {
+      try {
+        localStorage.setItem(COACH_PENDING_STORAGE_KEY, JSON.stringify(entries));
+        return true;
+      } catch (error) {
+        console.error('تعذر حفظ تسجيلات المدرب:', error);
+        showToast('تعذر حفظ التسجيل. تحقق من مساحة التخزين على الهاتف.', 'error');
+        return false;
+      }
+    }
+
+    function renderCoachMode() {
+      const gymId = getCoachGymIdFromLink();
+      const errorEl = document.getElementById('coachModeError');
+      const addButton = document.querySelector('#coachModePanel button[onclick="openAddModal()"]');
+      const exportButton = document.querySelector('#coachModePanel button[onclick="exportCoachRegistrations()"]');
+      const nameInput = document.getElementById('coachTrainerName');
+      if (!errorEl || !nameInput) return;
+
+      try {
+        nameInput.value = localStorage.getItem('power_gym_coach_trainer_name_v1') || '';
+      } catch (error) {
+        console.error('تعذر قراءة اسم المدرب:', error);
+        showToast('تعذر قراءة اسم المدرب المحفوظ.', 'error');
+      }
+
+      const validInvite = Boolean(gymId);
+      errorEl.classList.toggle('hidden', validInvite);
+      errorEl.textContent = validInvite
+        ? ''
+        : 'رابط التسجيل غير مكتمل. اطلب من المدرب الرئيسي إعادة مشاركة QR الخاص بالنادي.';
+      [addButton, exportButton].forEach(button => {
+        if (button) button.disabled = !validInvite;
+      });
+
+      const countEl = document.getElementById('coachPendingCount');
+      const listEl = document.getElementById('coachPendingList');
+      if (!countEl || !listEl) return;
+
+      const allEntries = readCoachPendingRegistrations();
+      if (!allEntries) {
+        listEl.textContent = 'تعذر تحميل التسجيلات.';
+        return;
+      }
+      const entries = validInvite ? allEntries.filter(entry => entry.gymId === gymId) : [];
+      countEl.textContent = entries.length.toLocaleString('ar-IQ');
+      listEl.innerHTML = entries.length
+        ? entries.slice(0, 30).map(entry => `
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+              <span class="truncate text-xs font-bold text-slate-200">${escapeHtml(entry.player?.name || 'لاعب بدون اسم')}</span>
+              <span class="shrink-0 text-[10px] text-slate-400" dir="ltr">${escapeHtml(entry.player?.startDate || '')}</span>
+            </div>
+          `).join('')
+        : '<p class="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-400">لا توجد تسجيلات محفوظة بعد.</p>';
+
+      if (entries.length > 30) {
+        listEl.insertAdjacentHTML('beforeend', `<p class="text-center text-[10px] text-slate-400">ويظهر ${ (entries.length - 30).toLocaleString('ar-IQ') } تسجيل إضافي بعد التصدير.</p>`);
+      }
+    }
+
+    function saveCoachRegistration(data) {
+      const gymId = getCoachGymIdFromLink();
+      if (!gymId) {
+        showToast('رابط التسجيل غير مكتمل؛ اطلب QR جديداً من المدرب الرئيسي.', 'error');
+        return false;
+      }
+
+      const entries = readCoachPendingRegistrations();
+      if (!entries) return false;
+
+      const now = new Date().toISOString();
+      const submissionId = `coach_${window.crypto?.randomUUID
+        ? window.crypto.randomUUID()
+        : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
+      const player = sanitizePlayerRecord({
+        ...data,
+        id: submissionId,
+        code: '',
+        courseNotes: '',
+        courseImages: [],
+        attendanceCount: 0,
+        lastCheckIn: '',
+        photo: '',
+        telegramFileId: '',
+        playerChatId: '',
+        activationSent: false,
+        threeDayRemindersSent: [],
+        lastReminderDate: '',
+        coachSubmissionId: submissionId,
+        createdAt: now,
+        updatedAt: now
+      });
+
+      if (!player) {
+        showToast('تعذر تجهيز بيانات التسجيل للتصدير.', 'error');
+        return false;
+      }
+
+      const entry = {
+        submissionId,
+        gymId,
+        trainerName: document.getElementById('coachTrainerName').value.trim().slice(0, 60),
+        submittedAt: now,
+        player
+      };
+      const nextEntries = [entry, ...entries];
+      if (!saveCoachPendingRegistrations(nextEntries)) return false;
+
+      try {
+        localStorage.setItem('power_gym_coach_trainer_name_v1', entry.trainerName);
+      } catch (error) {
+        console.error('تعذر حفظ اسم المدرب:', error);
+        showToast('تم حفظ التسجيل لكن تعذر حفظ اسم المدرب.', 'warning');
+      }
+      return true;
+    }
+
+    function exportCoachRegistrations() {
+      const gymId = getCoachGymIdFromLink();
+      const entries = readCoachPendingRegistrations();
+      if (!gymId || !entries) {
+        if (!gymId) showToast('تعذر تحديد النادي لهذا الملف. افتح وضع المدرب من QR الصحيح.', 'error');
+        return;
+      }
+      const gymEntries = entries.filter(entry => entry.gymId === gymId);
+      if (!gymEntries.length) {
+        showToast('لا توجد تسجيلات لهذا النادي حتى الآن.', 'warning');
+        return;
+      }
+
+      const exportData = {
+        format: 'power-gym-coach-registrations',
+        version: 1,
+        gymId,
+        trainerName: document.getElementById('coachTrainerName').value.trim().slice(0, 60),
+        exportedAt: new Date().toISOString(),
+        entries: gymEntries.map(entry => ({
+          submissionId: entry.submissionId,
+          submittedAt: entry.submittedAt,
+          trainerName: entry.trainerName,
+          player: entry.player
+        }))
+      };
+      const fileName = `power_gym_registrations_${getTodayDateString()}.json`;
+      const url = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast(`تم تجهيز ملف ${gymEntries.length.toLocaleString('ar-IQ')} تسجيلات. أرسله للمدرب الرئيسي للاستيراد.`, 'success');
+    }
+
+    function importCoachRegistrations(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('ملف تسجيلات المدربين أكبر من الحد المسموح (2 ميغابايت).', 'error');
+        event.target.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => {
+        console.error('تعذر قراءة ملف تسجيلات المدربين.');
+        showToast('تعذر قراءة ملف التسجيلات. جرّب نسخة أخرى.', 'error');
+        event.target.value = '';
+      };
+      reader.onload = () => {
+        const previousPlayers = players.slice();
+        try {
+          const imported = JSON.parse(String(reader.result || ''));
+          if (imported?.format !== 'power-gym-coach-registrations' || imported.version !== 1 ||
+              !Array.isArray(imported.entries) || imported.entries.length > 500) {
+            throw new TypeError('صيغة ملف تسجيلات المدربين غير مدعومة.');
+          }
+
+          const gymId = localStorage.getItem(COACH_GYM_STORAGE_KEY);
+          if (!gymId || imported.gymId !== gymId) {
+            throw new TypeError('الملف ليس خاصاً برمز هذا النادي. افتح QR المشاركة أولاً على جهاز المدرب الرئيسي.');
+          }
+          if (imported.entries.length === 0) {
+            showToast('لا توجد تسجيلات داخل هذا الملف.', 'info');
+            return;
+          }
+
+          const importedIds = new Set(players.map(player => player.coachSubmissionId).filter(Boolean));
+          const seenIds = new Set();
+          const newPlayers = [];
+          for (const entry of imported.entries) {
+            const submissionId = String(entry?.submissionId || '');
+            const rawPlayer = entry?.player;
+            if (!/^[a-zA-Z0-9_-]{12,100}$/.test(submissionId) ||
+                !rawPlayer || typeof rawPlayer !== 'object' ||
+                !String(rawPlayer.name || '').trim() ||
+                !String(rawPlayer.phone || '').trim() ||
+                !isValidDateString(rawPlayer.startDate) ||
+                !isValidDateString(rawPlayer.endDate)) {
+              throw new TypeError('يحتوي الملف على تسجيل ناقص أو غير صالح. لم يتم استيراد أي سجل.');
+            }
+            if (seenIds.has(submissionId)) continue;
+            seenIds.add(submissionId);
+            if (importedIds.has(submissionId)) continue;
+
+            const occupiedIds = new Set(players.concat(newPlayers).map(player => player.id));
+            let playerId;
+            do {
+              playerId = `plr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            } while (occupiedIds.has(playerId));
+
+            const submittedAt = Date.parse(entry.submittedAt);
+            const player = sanitizePlayerRecord({
+              ...rawPlayer,
+              id: playerId,
+              code: '',
+              coachSubmissionId: submissionId,
+              playerChatId: '',
+              activationSent: false,
+              telegramFileId: '',
+              createdAt: Number.isFinite(submittedAt) ? new Date(submittedAt).toISOString() : new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+            if (!player || !player.name || !player.phone) {
+              throw new TypeError('تعذر التحقق من اسم أو رقم أحد اللاعبين في الملف.');
+            }
+            player.code = generateNextPlayerCode(players.concat(newPlayers).map(item => item.code));
+            player.intlPhone = formatIraqiPhone(player.phone);
+            newPlayers.push(player);
+          }
+
+          if (!newPlayers.length) {
+            showToast('كل تسجيلات هذا الملف مستوردة مسبقاً.', 'info');
+            return;
+          }
+
+          players = [...newPlayers, ...players];
+          if (!savePlayersToStorage()) {
+            players = previousPlayers;
+            renderPlayers();
+            return;
+          }
+          logActivity(`استيراد ${newPlayers.length} تسجيلات من ملف مدرب مساعد`);
+          showToast(`تم استيراد ${newPlayers.length.toLocaleString('ar-IQ')} لاعبين دون تكرار.`, 'success');
+        } catch (error) {
+          console.error('تعذر استيراد تسجيلات المدربين:', error);
+          showToast(error instanceof SyntaxError
+            ? 'ملف التسجيلات ليس بصيغة JSON صالحة.'
+            : (error.message || 'تعذر استيراد الملف.'), 'error');
+        } finally {
+          event.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    async function copyCoachRegistrationLink() {
+      const input = document.getElementById('coachRegistrationUrl');
+      const url = input?.value || '';
+      if (!url) {
+        showToast('لا يوجد رابط صالح للنسخ. افتح النسخة المستضافة عبر HTTPS.', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast('تم نسخ رابط وضع المدرب.', 'success');
+      } catch (error) {
+        console.error('تعذر نسخ رابط وضع المدرب:', error);
+        input.focus();
+        input.select();
+        showToast('تعذر النسخ التلقائي؛ حدّد الرابط وانسخه يدوياً.', 'warning');
+      }
+    }
+
     function openAddModal() {
       document.getElementById('editingPlayerId').value = '';
       document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-user-plus text-amber-500"></i><span>إضافة لاعب جديد</span>`;
-      document.getElementById('saveBtn').textContent = 'حفظ وإرسال رسالة التفعيل للتليكرام';
+      document.getElementById('saveBtn').textContent = COACH_MODE
+        ? 'حفظ التسجيل على هذا الهاتف'
+        : 'حفظ وإرسال رسالة التفعيل للتليكرام';
       document.getElementById('playerForm').reset();
 
       compressedPhotoDataUrl = '';
@@ -1759,6 +2151,35 @@
 
       if (!name || !phone || !startDate || !endDate) {
         showToast('يرجى ملء جميع الحقول المطلوبة!', 'warning');
+        return;
+      }
+
+      if (COACH_MODE) {
+        if (editingId) {
+          showToast('وضع المدرب المساعد يسمح بإضافة تسجيلات جديدة فقط.', 'error');
+          return;
+        }
+        saveBtn.disabled = true;
+        try {
+          const saved = saveCoachRegistration({
+            name,
+            age,
+            phone,
+            planType,
+            startDate,
+            durationMonths,
+            endDate,
+            paidAmount,
+            debtAmount,
+            notes
+          });
+          if (!saved) return;
+          closePlayerModal();
+          renderCoachMode();
+          showToast('تم حفظ التسجيل محلياً. صدّر الملف وسلّمه للمدرب الرئيسي.', 'success');
+        } finally {
+          saveBtn.disabled = false;
+        }
         return;
       }
 
@@ -2082,7 +2503,7 @@
     // =========================================================
     function setFilter(filterType) {
       currentFilter = filterType;
-      const filters = ['all', 'active', 'soon', 'expired', 'debt'];
+      const filters = ['all', 'followup', 'active', 'soon', 'expired', 'debt'];
       filters.forEach(flt => {
         const btn = document.getElementById(`flt-${flt}`);
         if (!btn) return;
@@ -2140,6 +2561,79 @@
       document.getElementById('statDebt').innerHTML = `${fin.totalDebt.toLocaleString('en-US')} <span class="text-[10px]">د.ع</span>`;
     }
 
+    function renderDailyFollowUp() {
+      const list = document.getElementById('dailyFollowUpList');
+      const count = document.getElementById('followUpCount');
+      if (!list || !count) return;
+
+      const followUps = players
+        .map(player => ({ player, subscription: getSubscriptionStatus(player.endDate) }))
+        .filter(item => item.subscription.status === 'expired' || item.subscription.status === 'soon')
+        .sort((a, b) => {
+          const aPriority = a.subscription.status === 'expired' ? 0 : 1;
+          const bPriority = b.subscription.status === 'expired' ? 0 : 1;
+          if (aPriority !== bPriority) return aPriority - bPriority;
+          return aPriority === 0
+            ? b.subscription.diffDays - a.subscription.diffDays
+            : a.subscription.diffDays - b.subscription.diffDays;
+        });
+
+      count.textContent = `${followUps.length.toLocaleString('ar-IQ')} يحتاج متابعة`;
+
+      if (followUps.length === 0) {
+        list.innerHTML = `
+          <div class="daily-follow-up-empty">
+            <span class="daily-follow-up-empty__icon"><i class="fa-solid fa-circle-check" aria-hidden="true"></i></span>
+            <div>
+              <p class="text-xs font-black text-emerald-300">كل الاشتراكات بحالة مستقرة</p>
+              <p class="mt-1 text-[11px] text-slate-400">ستظهر هنا الاشتراكات المنتهية أو التي توشك على الانتهاء.</p>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const visibleFollowUps = followUps.slice(0, 5);
+      list.innerHTML = visibleFollowUps.map(({ player, subscription }) => {
+        const safeId = sanitizeId(player.id);
+        const isExpired = subscription.status === 'expired';
+        const safeName = escapeHtml(player.name || 'لاعب بدون اسم');
+        const safeCode = escapeHtml(player.code || 'بدون كود');
+        const safeEndDate = escapeHtml(player.endDate || '');
+
+        return `
+          <article class="daily-follow-up-item ${isExpired ? 'is-expired' : 'is-soon'}">
+            <span class="daily-follow-up-item__icon" aria-hidden="true">
+              <i class="fa-solid ${isExpired ? 'fa-triangle-exclamation' : 'fa-clock'}"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-xs font-black text-white">${safeName}</p>
+              <p class="mt-1 text-[10px] font-semibold text-slate-400">
+                <span dir="ltr">${safeCode}</span>
+                <span class="mx-1.5 text-slate-600">•</span>
+                <span>${escapeHtml(subscription.label)}</span>
+                <span class="mx-1.5 text-slate-600">•</span>
+                <span dir="ltr">${safeEndDate}</span>
+              </p>
+            </div>
+            <button type="button" onclick="openRenewModal('${safeId}')" class="daily-follow-up-renew" aria-label="تجديد اشتراك ${safeName}">
+              <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+              <span>تجديد</span>
+            </button>
+          </article>
+        `;
+      }).join('');
+
+      if (followUps.length > visibleFollowUps.length) {
+        list.insertAdjacentHTML('beforeend', `
+          <button type="button" onclick="setFilter('followup')" class="daily-follow-up-more">
+            عرض ${ (followUps.length - visibleFollowUps.length).toLocaleString('ar-IQ') } اشتراكات إضافية
+            <i class="fa-solid fa-arrow-left mr-1" aria-hidden="true"></i>
+          </button>
+        `);
+      }
+    }
+
     // ---------- عناصر جمالية للبطاقات ----------
     function initialsAvatarHtml(name, sizeClass) {
       const words = String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2);
@@ -2168,6 +2662,7 @@
 
     function renderPlayers() {
       updateDashboardStats();
+      renderDailyFollowUp();
 
       const searchQuery = (document.getElementById('searchInput').value || '').trim().toLowerCase();
       const sortMode = (document.getElementById('sortSelect')?.value) || 'newest';
@@ -2178,6 +2673,7 @@
         const { status } = getSubscriptionStatus(player.endDate);
         const matchesFilter =
           currentFilter === 'all' ? true :
+          currentFilter === 'followup' ? (status === 'soon' || status === 'expired') :
           currentFilter === 'debt' ? (Number(player.debtAmount) > 0) :
           status === currentFilter;
 
@@ -3441,6 +3937,7 @@
       const { botToken, chatId } = getTelegramSettings();
       document.getElementById('botTokenInput').value = botToken;
       document.getElementById('chatIdInput').value = chatId;
+      updateSecurityPinStatus();
       document.getElementById('settingsModal').classList.remove('hidden');
     }
 

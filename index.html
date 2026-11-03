@@ -10,6 +10,11 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <!-- سياسة أمان المحتوى (CSP) للحماية من حقن السكربتات الخارجية -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://cdn-icons-png.flaticon.com https://api.qrserver.com https://images.unsplash.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; connect-src 'self' https://api.telegram.org;">
+  <script>
+    if (new URLSearchParams(location.search).get('pgCoach') === '1') {
+      document.documentElement.classList.add('pg-coach-mode');
+    }
+  </script>
   <title>Power Gym - بور جم | المنظومة الذكية المتكاملة لإدارة القاعة</title>
   <link rel="icon" type="image/svg+xml" href="logo.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -529,6 +534,25 @@
       </button>
     </div>
 
+    <section id="dailyFollowUp" class="card-bg mb-6 rounded-2xl p-4 md:p-5" aria-labelledby="dailyFollowUpTitle">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="dailyFollowUpTitle" class="flex items-center gap-2 text-sm font-black text-white">
+            <i class="fa-solid fa-list-check text-amber-400" aria-hidden="true"></i>
+            متابعة الاشتراكات
+          </h2>
+          <p class="mt-1 text-[11px] font-semibold text-slate-400">الأقرب للاستحقاق أولاً — جدّد الاشتراك مباشرة من هنا</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="followUpCount" class="rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-[11px] font-black text-amber-200">0 يحتاج متابعة</span>
+          <button type="button" onclick="setFilter('followup')" class="rounded-xl border border-slate-700 px-3 py-2 text-[11px] font-bold text-slate-300 transition hover:border-amber-400/40 hover:text-white">
+            عرض القائمة <i class="fa-solid fa-arrow-left mr-1" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+      <div id="dailyFollowUpList" class="daily-follow-up-list" aria-live="polite"></div>
+    </section>
+
     <!-- شريط البحث والفلترة والترتيب وطريقة العرض -->
     <div class="card-bg p-4 rounded-2xl mb-6 space-y-3">
       <div class="flex flex-col lg:flex-row justify-between items-center gap-3">
@@ -541,6 +565,7 @@
         <!-- أزرار الفلترة -->
         <div class="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
           <button onclick="setFilter('all')" id="flt-all" class="filter-btn bg-amber-500 text-black px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition">الكل</button>
+          <button onclick="setFilter('followup')" id="flt-followup" class="filter-btn bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition">تحتاج متابعة 🔔</button>
           <button onclick="setFilter('active')" id="flt-active" class="filter-btn bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition">الفعالين 🟢</button>
           <button onclick="setFilter('soon')" id="flt-soon" class="filter-btn bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition">ينتهي قريباً 🟡</button>
           <button onclick="setFilter('expired')" id="flt-expired" class="filter-btn bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition">المنتهية 🔴</button>
@@ -605,6 +630,73 @@
 
   </main>
 
+  <main id="coachModePanel" class="hidden min-h-screen px-4 py-8">
+    <div class="mx-auto max-w-xl space-y-4">
+      <header class="flex items-center gap-3">
+        <img src="logo.svg" alt="" class="h-12 w-12 rounded-xl border border-amber-400/20 bg-slate-900 p-1">
+        <div>
+          <h1 class="text-lg font-black text-white">تسجيل المدرب المساعد</h1>
+          <p class="text-xs text-slate-400">Power Gym · تسجيلات محلية دون اتصال</p>
+        </div>
+      </header>
+
+      <div id="coachModeError" class="hidden rounded-2xl border border-rose-400/20 bg-rose-400/5 p-4 text-sm text-rose-200" role="alert"></div>
+
+      <section class="card-bg rounded-2xl p-4">
+        <label for="coachTrainerName" class="mb-1.5 block text-xs font-bold text-slate-300">اسم المدرب</label>
+        <input id="coachTrainerName" type="text" maxlength="60" autocomplete="name" placeholder="اسمك" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white">
+        <button type="button" onclick="openAddModal()" class="gold-gradient mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-black text-black">
+          <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
+          تسجيل لاعب جديد
+        </button>
+      </section>
+
+      <section class="card-bg space-y-3 rounded-2xl p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-black text-white">تسجيلات محفوظة على هذا الهاتف</h2>
+            <p class="mt-1 text-[11px] text-slate-400">صدّر ملفاً منفصلاً وسلّمه للمدرب الرئيسي لاستيراده.</p>
+          </div>
+          <span id="coachPendingCount" class="shrink-0 rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-black text-amber-200">0</span>
+        </div>
+        <div id="coachPendingList" class="space-y-2"></div>
+        <div>
+          <button type="button" onclick="exportCoachRegistrations()" class="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500/10 px-3 text-xs font-black text-emerald-200">
+            <i class="fa-solid fa-file-export" aria-hidden="true"></i>
+            تصدير ملف التسجيلات
+          </button>
+        </div>
+        <p class="rounded-xl border border-amber-400/10 bg-amber-400/5 p-3 text-[11px] leading-6 text-amber-100/80">
+          تبقى التسجيلات محفوظة على الهاتف ولا يمسحها التصدير أو تحديث التطبيق. بعد التصدير سلّم الملف للمدرب الرئيسي كي يستورده. لا توجد مزامنة فورية؛ يحتوي الملف على أسماء وأرقام اللاعبين، فاحفظه وشاركه بشكل خاص.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <div id="coachInviteModal" class="fixed inset-0 modal-backdrop z-[90] hidden flex items-center justify-center overflow-y-auto p-4">
+    <div class="card-bg my-auto w-full max-w-md space-y-4 rounded-3xl border border-amber-400/20 p-5 text-center">
+      <div class="flex items-center justify-between gap-3 text-right">
+        <div>
+          <h2 class="text-base font-black text-white">QR تسجيل المدرب المساعد</h2>
+          <p class="mt-1 text-[11px] text-slate-400">يفتح نموذج تسجيل محدود على هاتف المدرب</p>
+        </div>
+        <button type="button" onclick="document.getElementById('coachInviteModal').classList.add('hidden')" class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-slate-300" aria-label="إغلاق">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="mx-auto flex h-64 w-64 items-center justify-center rounded-2xl bg-white p-3">
+        <img id="coachInviteQr" src="" alt="رمز QR لتسجيل المدرب المساعد" class="hidden h-full w-full object-contain">
+        <p id="coachInviteQrError" class="hidden px-2 text-xs font-bold text-slate-700"></p>
+      </div>
+      <label for="coachRegistrationUrl" class="block text-right text-[11px] font-bold text-slate-300">رابط التسجيل</label>
+      <div class="flex gap-2">
+        <input id="coachRegistrationUrl" readonly dir="ltr" class="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-left text-xs text-slate-200">
+        <button type="button" onclick="copyCoachRegistrationLink()" class="rounded-xl bg-amber-400/10 px-3 text-xs font-black text-amber-100">نسخ</button>
+      </div>
+      <p class="text-[11px] leading-6 text-slate-400">ثبّت التطبيق على هاتف المدرب مسبقاً ليعمل دون إنترنت. التسجيلات لا تنتقل تلقائياً؛ على المدرب تصدير ملفها وتسليمه لك لاستيراده من إدارة المدربين.</p>
+    </div>
+  </div>
+
   <!-- ========================================== -->
   <!-- نافذة إضافة / تعديل لاعب (Player Modal) -->
   <!-- ========================================== -->
@@ -624,7 +716,7 @@
         <input type="hidden" id="editingPlayerId" value="">
 
         <!-- رفع الصورة -->
-        <div class="flex flex-col items-center">
+        <div class="flex flex-col items-center" data-coach-mode-hidden>
           <label for="playerPhotoInput" class="cursor-pointer group relative" title="التقاط صورة بالكاميرا">
             <img id="photoPreview" src="https://cdn-icons-png.flaticon.com/512/847/847969.png" alt="صورة اللاعب" class="w-24 h-24 rounded-full object-cover border-2 border-amber-500 p-0.5 bg-slate-800">
             <div class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
@@ -673,7 +765,7 @@
         </div>
 
         <!-- صندوق الربط الذكي بتليكرام اللاعب وإرسال رسالة التفعيل -->
-        <div class="bg-blue-950/30 border border-blue-500/30 rounded-2xl p-3.5 space-y-2">
+        <div class="bg-blue-950/30 border border-blue-500/30 rounded-2xl p-3.5 space-y-2" data-coach-mode-hidden>
           <div class="flex flex-wrap items-center justify-between gap-2">
             <span class="text-xs font-black text-blue-300 flex items-center gap-1.5">
               <i class="fa-brands fa-telegram text-blue-400 text-base"></i>
@@ -737,7 +829,7 @@
           <input type="text" id="playerNotes" maxlength="160" placeholder="اختياري..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm focus:border-amber-500 focus:outline-none text-white">
         </div>
 
-        <div class="bg-blue-950/25 border border-blue-500/30 rounded-2xl p-4 space-y-3">
+        <div class="bg-blue-950/25 border border-blue-500/30 rounded-2xl p-4 space-y-3" data-coach-mode-hidden>
           <div>
             <label class="block text-sm font-black text-blue-300 mb-1">ملف الكورس الخاص باللاعب</label>
             <p class="text-[11px] text-slate-400">احفظ تفاصيل الكورس وصوره حتى ترجع لها إذا نسيها اللاعب. البيانات والصور محفوظة محلياً ضمن ملف اللاعب.</p>
@@ -1314,12 +1406,19 @@
         <h4 class="text-sm font-bold text-amber-400 mb-2 flex items-center gap-1.5">
           <i class="fa-solid fa-user-shield"></i> حماية النظام برمز سري (PIN)
         </h4>
+        <div class="mb-2 flex items-center justify-between gap-3">
+          <p class="text-[11px] leading-5 text-slate-400">اضبط رمزاً من 4 خانات على الأقل لقفل التطبيق عند الحاجة.</p>
+          <span id="securityPinStatus" class="shrink-0"></span>
+        </div>
         <div class="flex gap-2">
-          <input type="password" id="newPinInput" maxlength="12" placeholder="أدخل رمز PIN جديد (أو اتركه فارغاً لإلغاء القفل)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white" dir="ltr">
+          <input type="password" id="newPinInput" maxlength="12" placeholder="أدخل رمز PIN جديد" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white" dir="ltr">
           <button onclick="updateSecurityPin()" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap">
             تحديث الرمز
           </button>
         </div>
+        <button type="button" id="removeSecurityPinButton" onclick="removeSecurityPin()" disabled class="mt-2 inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3.5 py-2 text-xs font-bold text-rose-300 transition hover:border-rose-500/40 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-40">
+          <i class="fa-solid fa-lock-open" aria-hidden="true"></i> حذف رمز PIN وإلغاء القفل
+        </button>
       </div>
 
       <hr class="border-slate-800 my-3">
