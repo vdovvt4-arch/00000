@@ -334,56 +334,72 @@
       </button>
     </div>
 
-    <nav aria-label="القائمة الرئيسية" class="flex-1 space-y-5 overflow-y-auto p-4">
-      <section>
-        <h2 class="mb-2 px-3 text-[10px] font-black uppercase tracking-widest text-slate-500">الرئيسية</h2>
-        <button onclick="scrollToPlayersDirectory(); closeMobileMenu();" class="sidebar-link">
-          <i class="fa-solid fa-users"></i><span>إدارة اللاعبين</span><span id="sidebarPlayerCount" class="mr-auto rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] text-blue-300">0</span>
-        </button>
-        <button onclick="openSmartCalendarModal(); closeMobileMenu();" class="sidebar-link">
-          <i class="fa-solid fa-calendar-days"></i><span>التقويم الذكي</span>
-        </button>
-      </section>
+    <nav aria-label="القائمة الرئيسية" class="flex-1 space-y-2 overflow-y-auto p-4">
+      <details class="sidebar-group" open>
+        <summary class="sidebar-group__summary">
+          <i class="fa-solid fa-house"></i><span>الرئيسية</span><i class="fa-solid fa-chevron-down sidebar-group__chevron"></i>
+        </summary>
+        <div class="sidebar-group__items">
+          <button onclick="scrollToPlayersDirectory(); closeMobileMenu();" class="sidebar-link">
+            <i class="fa-solid fa-users"></i><span>إدارة اللاعبين</span><span id="sidebarPlayerCount" class="mr-auto rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] text-blue-300">0</span>
+          </button>
+          <button onclick="openSmartCalendarModal(); closeMobileMenu();" class="sidebar-link">
+            <i class="fa-solid fa-calendar-days"></i><span>التقويم الذكي</span>
+          </button>
+        </div>
+      </details>
 
-      <section>
-        <h2 class="mb-2 px-3 text-[10px] font-black uppercase tracking-widest text-slate-500">المالية والتخصيص</h2>
-        <button onclick="openFinanceModal('profits'); closeMobileMenu();" class="sidebar-link">
-          <i class="fa-solid fa-chart-line"></i><span>الأرباح والمصاريف</span>
-        </button>
-        <button onclick="openFinanceModal('debts'); closeMobileMenu();" class="sidebar-link">
-          <i class="fa-solid fa-hand-holding-dollar"></i><span>ديون ومشتريات اللاعبين</span>
-        </button>
-        <button onclick="openFinanceModal('customize'); closeMobileMenu();" class="sidebar-link">
-          <i class="fa-solid fa-sliders"></i><span>الأسعار وتخصيص الوصل</span>
-        </button>
-      </section>
+      <details class="sidebar-group">
+        <summary class="sidebar-group__summary">
+          <i class="fa-solid fa-dumbbell"></i><span>إدارة القاعة</span><i class="fa-solid fa-chevron-down sidebar-group__chevron"></i>
+        </summary>
+        <div class="sidebar-group__items" id="sidebarOperationsItems">
+          <button onclick="runThreeDayCountdownReminders(false); closeMobileMenu();" id="btnThreeDayAlerts" class="sidebar-link">
+            <i class="fa-solid fa-bell"></i><span>تذكيرات قرب الانتهاء</span>
+          </button>
+          <button onclick="runTelegramCheckForAllExpired(); closeMobileMenu();" id="btnAlertAll" class="sidebar-link">
+            <i class="fa-brands fa-telegram"></i><span>إشعار الاشتراكات المنتهية</span>
+          </button>
+        </div>
+      </details>
 
-      <section>
-        <h2 class="mb-2 px-3 text-[10px] font-black uppercase tracking-widest text-slate-500">التنبيهات والنسخ</h2>
-        <button onclick="runThreeDayCountdownReminders(false); closeMobileMenu();" id="btnThreeDayAlerts" class="sidebar-link">
-          <i class="fa-solid fa-bell"></i><span>تذكيرات قرب الانتهاء</span>
-        </button>
-        <button onclick="runTelegramCheckForAllExpired(); closeMobileMenu();" id="btnAlertAll" class="sidebar-link">
-          <i class="fa-brands fa-telegram"></i><span>إشعار الاشتراكات المنتهية</span>
-        </button>
-        <button onclick="sendBackupToTelegram(); closeMobileMenu();" id="btnCloudBackup" class="sidebar-link">
-          <i class="fa-solid fa-cloud-arrow-up"></i><span>نسخة احتياطية سحابية</span>
-        </button>
-      </section>
+      <details class="sidebar-group">
+        <summary class="sidebar-group__summary">
+          <i class="fa-solid fa-chart-pie"></i><span>المالية والتقارير</span><i class="fa-solid fa-chevron-down sidebar-group__chevron"></i>
+        </summary>
+        <div class="sidebar-group__items">
+          <button onclick="openFinanceModal('profits'); closeMobileMenu();" class="sidebar-link">
+            <i class="fa-solid fa-chart-line"></i><span>الأرباح والمصاريف</span>
+          </button>
+          <button onclick="openFinanceModal('debts'); closeMobileMenu();" class="sidebar-link">
+            <i class="fa-solid fa-hand-holding-dollar"></i><span>ديون ومشتريات اللاعبين</span>
+          </button>
+          <button onclick="openFinanceModal('customize'); closeMobileMenu();" class="sidebar-link">
+            <i class="fa-solid fa-sliders"></i><span>الأسعار وتخصيص الوصل</span>
+          </button>
+        </div>
+      </details>
 
-      <section>
-        <h2 class="mb-2 px-3 text-[10px] font-black uppercase tracking-widest text-slate-500">النظام</h2>
-        <button onclick="openAuditLogModal(); closeMobileMenu();" class="sidebar-link">
-          <i class="fa-solid fa-clock-rotate-left"></i><span>سجل النشاطات</span>
-        </button>
-        <button onclick="openSettingsModal(); closeMobileMenu();" class="sidebar-link relative">
-          <i class="fa-solid fa-gear"></i><span>الإعدادات والنسخ</span>
-          <span id="botStatusDot" class="absolute left-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-slate-950 bg-red-500"></span>
-        </button>
-        <button onclick="lockSystemNow(); closeMobileMenu();" id="btnLockNow" class="sidebar-link text-rose-300 hover:bg-rose-500/10 hover:text-rose-200">
-          <i class="fa-solid fa-lock"></i><span>قفل التطبيق</span>
-        </button>
-      </section>
+      <details class="sidebar-group">
+        <summary class="sidebar-group__summary">
+          <i class="fa-solid fa-gear"></i><span>النظام والنسخ</span><i class="fa-solid fa-chevron-down sidebar-group__chevron"></i>
+        </summary>
+        <div class="sidebar-group__items">
+          <button onclick="sendBackupToTelegram(); closeMobileMenu();" id="btnCloudBackup" class="sidebar-link">
+            <i class="fa-solid fa-cloud-arrow-up"></i><span>نسخة احتياطية سحابية</span>
+          </button>
+          <button onclick="openAuditLogModal(); closeMobileMenu();" class="sidebar-link">
+            <i class="fa-solid fa-clock-rotate-left"></i><span>سجل النشاطات</span>
+          </button>
+          <button onclick="openSettingsModal(); closeMobileMenu();" class="sidebar-link relative">
+            <i class="fa-solid fa-gear"></i><span>الإعدادات والنسخ</span>
+            <span id="botStatusDot" class="absolute left-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-slate-950 bg-red-500"></span>
+          </button>
+          <button onclick="lockSystemNow(); closeMobileMenu();" id="btnLockNow" class="sidebar-link text-rose-300 hover:bg-rose-500/10 hover:text-rose-200">
+            <i class="fa-solid fa-lock"></i><span>قفل التطبيق</span>
+          </button>
+        </div>
+      </details>
     </nav>
     <div class="border-t border-slate-800 px-5 py-4">
       <p class="text-[10px] font-bold text-slate-500">حالة البوت</p>
@@ -1113,7 +1129,7 @@
             <i class="fa-solid fa-calendar-days text-amber-500"></i>
             <span>التقويم الذكي وحاسبة تواريخ الاشتراكات الأساسية</span>
           </h3>
-          <p class="text-xs text-slate-400 mt-0.5">يحسب تواريخ البدء والانتهاء (شوكت يخلص) ومواعيد إشعارات الـ 3 أيام بشكل أساسي ودقيق</p>
+          <p class="text-xs text-slate-400 mt-0.5">تابع الاشتراكات وسجّل مواعيد القاعة وتذكيراتها بمكان واحد</p>
         </div>
         <button onclick="closeSmartCalendarModal()" class="text-slate-400 hover:text-white w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center">
           <i class="fa-solid fa-xmark"></i>
@@ -1143,6 +1159,7 @@
             <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> بدء اشتراك</span>
             <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> إشعار تذكير (قبل 3 أيام)</span>
             <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> انتهاء اشتراك (شوكت يخلص)</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span> موعد خاص</span>
           </div>
 
           <!-- رؤوس أيام الأسبوع -->

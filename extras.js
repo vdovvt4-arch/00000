@@ -530,6 +530,7 @@
         schemaVersion: typeof SCHEMA_VERSION !== 'undefined' ? SCHEMA_VERSION : '2.0.0',
         gymProfile,
         financeLedger,
+        calendarEvents,
         exportedAt: new Date().toISOString(),
         players
       };

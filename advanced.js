@@ -15,13 +15,13 @@
   }
   window.pgCloseAdvanced=()=>{const el=$('pgAdvancedModal'); if(el)el.remove(); if(window.pgStopScanner)window.pgStopScanner();};
   function addNav(){
-    const nav=document.querySelector('#desktopSidebar nav'); if(!nav||$('pgAdvancedNav'))return;
-    const sec=document.createElement('section'); sec.id='pgAdvancedNav'; sec.className='space-y-1'; sec.innerHTML=`<p class="px-3 pb-1 text-[10px] font-black text-slate-500">الإدارة المتقدمة</p>
+    const items=$('sidebarOperationsItems'); if(!items||$('pgAdvancedNav'))return;
+    const sec=document.createElement('div'); sec.id='pgAdvancedNav'; sec.className='grid gap-1'; sec.innerHTML=`
       <button class="sidebar-link" onclick="pgOpenAttendance();closeMobileMenu?.()"><i class="fa-solid fa-clipboard-check"></i><span>الحضور والانصراف</span></button>
       <button class="sidebar-link" onclick="pgOpenInventory();closeMobileMenu?.()"><i class="fa-solid fa-boxes-stacked"></i><span>المخزن والمبيعات</span></button>
       <button class="sidebar-link" onclick="pgOpenTrainers();closeMobileMenu?.()"><i class="fa-solid fa-user-tie"></i><span>إدارة المدربين</span></button>
       <button class="sidebar-link" onclick="pgDailyClose();closeMobileMenu?.()"><i class="fa-solid fa-cash-register"></i><span>إغلاق الصندوق اليومي</span></button>`;
-    nav.appendChild(sec);
+    items.appendChild(sec);
   }
   function recordAttendance(code){
     const p=(typeof players!=='undefined'?players:[]).find(x=>String(x.code).toLowerCase()===String(code).trim().toLowerCase()||String(x.phone)===String(code).trim()||String(x.id)===String(code).trim());

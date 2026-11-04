@@ -430,6 +430,52 @@ header{
 #desktopSidebar .border-b,#desktopSidebar .border-t{
  border-color:var(--pg-border)!important;
 }
+.sidebar-group{
+ border:1px solid rgba(148,180,205,.1);
+ border-radius:14px;
+ background:rgba(255,255,255,.018);
+ overflow:hidden;
+}
+.sidebar-group__summary{
+ display:flex;
+ min-height:44px;
+ align-items:center;
+ gap:.75rem;
+ padding:.65rem .8rem;
+ color:#d5e0e9;
+ cursor:pointer;
+ font-size:.75rem;
+ font-weight:900;
+ list-style:none;
+}
+.sidebar-group__summary::-webkit-details-marker{display:none}
+.sidebar-group__summary>i:first-child{
+ width:1.15rem;
+ color:#53cbb5;
+ text-align:center;
+}
+.sidebar-group__summary:hover,
+.sidebar-group[open]>.sidebar-group__summary{
+ background:rgba(53,208,176,.07);
+ color:#fff;
+}
+.sidebar-group__chevron{
+ margin-right:auto;
+ color:#8ca1b2;
+ font-size:.65rem;
+ transition:transform 160ms ease;
+}
+.sidebar-group[open] .sidebar-group__chevron{transform:rotate(180deg)}
+.sidebar-group__items{
+ display:grid;
+ gap:.15rem;
+ padding:0 .4rem .45rem;
+}
+.sidebar-group__items .sidebar-link{
+ min-height:40px;
+ padding:.58rem .7rem;
+ font-size:.73rem;
+}
 .sidebar-link{
  min-height:44px;
  border-radius:12px!important;

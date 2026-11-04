@@ -58,11 +58,6 @@ body {
   color: #7dd3fc;
 }
 
-#desktopSidebar nav section + section {
-  border-top: 1px solid rgba(51, 65, 85, 0.45);
-  padding-top: 1rem;
-}
-
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

@@ -16,6 +16,7 @@
       PIN_HASH: 'power_gym_pin_sha256_v1',
       AUDIT_LOG: 'power_gym_audit_v1',
       TELEGRAM_TOKEN_ROTATION: 'power_gym_telegram_token_rotation_v1',
+      CALENDAR_EVENTS: 'power_gym_calendar_events_v1',
       FINANCE_LEDGER: 'power_gym_finance_ledger_v2',
       GYM_PROFILE: 'power_gym_profile_v2',
       TELEGRAM_DIRECTORY: 'power_gym_tg_directory_v2'
@@ -25,6 +26,7 @@
 
     // الحالة المهيكلة للنظام (Centralized Application State)
     let players = [];
+    let calendarEvents = [];
     let auditLogs = [];
     let financeLedger = {
       manualProfitAdjustment: 0,
@@ -386,6 +388,19 @@
         }
       } catch (e) {
         financeLedger = { manualProfitAdjustment: 0, manualDebtAdjustment: 0, transactions: [], debtEntries: [], debtPayments: [], renewals: [], receipts: [], receiptCounter: 0, receiptSettings: {} };
+      }
+
+      // 3.1 تحميل المواعيد اليدوية للتقويم
+      try {
+        const storedEvents = localStorage.getItem(STORAGE_KEYS.CALENDAR_EVENTS);
+        const parsedEvents = storedEvents ? JSON.parse(storedEvents) : [];
+        calendarEvents = Array.isArray(parsedEvents)
+          ? parsedEvents.map(sanitizeCalendarEvent).filter(Boolean)
+          : [];
+      } catch (err) {
+        console.error('Error reading calendar events from localStorage:', err);
+        calendarEvents = [];
+        showToast('تعذر قراءة مواعيد التقويم المحفوظة.', 'error');
       }
 
       // 4. تحميل جدول اللاعبين
@@ -783,6 +798,80 @@
       };
     }
 
+    function sanitizeCalendarEvent(rawEvent, index) {
+      if (!rawEvent || typeof rawEvent !== 'object' || !isValidDateString(rawEvent.date)) return null;
+      const title = String(rawEvent.title || '').trim().slice(0, 100);
+      if (!title) return null;
+      const rawTime = String(rawEvent.time || '');
+      const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(rawTime) ? rawTime : '';
+      const id = sanitizeId(rawEvent.id) || `calendar_${rawEvent.date}_${index}`;
+      return { id, date: rawEvent.date, title, time };
+    }
+
+    function saveCalendarEventsToStorage(events) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.CALENDAR_EVENTS, JSON.stringify(events));
+        return true;
+      } catch (err) {
+        console.error('Error saving calendar events:', err);
+        showToast('تعذر حفظ الموعد. تحقق من مساحة التخزين.', 'error');
+        return false;
+      }
+    }
+
+    function addCalendarEvent() {
+      const titleInput = document.getElementById('calendarEventTitle');
+      const timeInput = document.getElementById('calendarEventTime');
+      const title = String(titleInput?.value || '').trim().slice(0, 100);
+      const date = selectedCalendarDateStr;
+      const time = String(timeInput?.value || '');
+
+      if (!isValidDateString(date)) {
+        showToast('اختر يوماً صحيحاً من التقويم أولاً.', 'warning');
+        return;
+      }
+      if (!title) {
+        showToast('اكتب عنوان الموعد أولاً.', 'warning');
+        titleInput?.focus();
+        return;
+      }
+
+      const event = {
+        id: `calendar_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        date,
+        title,
+        time: /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : ''
+      };
+      const nextEvents = [...calendarEvents, event].sort((a, b) =>
+        a.date.localeCompare(b.date) || a.time.localeCompare(b.time)
+      );
+      if (!saveCalendarEventsToStorage(nextEvents)) return;
+
+      calendarEvents = nextEvents;
+      logActivity(`إضافة موعد للتقويم: ${title} (${date})`);
+      renderSmartCalendar();
+      selectCalendarDate(date);
+      showToast('تم حفظ الموعد في التقويم.', 'success');
+    }
+
+    function deleteCalendarEvent(eventId) {
+      const safeEventId = sanitizeId(eventId);
+      const event = calendarEvents.find(item => item.id === safeEventId);
+      if (!event) {
+        showToast('لم يتم العثور على الموعد المطلوب حذفه.', 'warning');
+        return;
+      }
+
+      const nextEvents = calendarEvents.filter(item => item.id !== safeEventId);
+      if (!saveCalendarEventsToStorage(nextEvents)) return;
+
+      calendarEvents = nextEvents;
+      logActivity(`حذف موعد من التقويم: ${event.title} (${event.date})`);
+      renderSmartCalendar();
+      selectCalendarDate(selectedCalendarDateStr);
+      showToast('تم حذف الموعد من التقويم.', 'success');
+    }
+
     function calculateEndDate() {
       const startInput = document.getElementById('startDate').value;
       const duration = parseInt(document.getElementById('durationMonths').value, 10) || 1;
@@ -905,6 +994,7 @@
           const r = getThreeReminderDates(p.endDate);
           return r.day3 === dateStr || r.day2 === dateStr || r.day1 === dateStr;
         }).length;
+        const eventCount = calendarEvents.filter(event => event.date === dateStr).length;
 
         const isToday = dateStr === todayStr;
         const isSelected = dateStr === selectedCalendarDateStr;
@@ -925,6 +1015,7 @@
               ${startedCount > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold" title="بدء اشتراك">${startedCount} بدء</span>` : ''}
               ${reminderCount > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold" title="إشعار تذكير الـ 3 أيام">${reminderCount} تذكير</span>` : ''}
               ${endedCount > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 font-bold" title="انتهاء اشتراك">${endedCount} ينتهي</span>` : ''}
+              ${eventCount > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-bold" title="مواعيد النادي">${eventCount} موعد</span>` : ''}
             </div>
           </div>
         `;
@@ -946,6 +1037,7 @@
         const r = getThreeReminderDates(p.endDate);
         return r.day3 === dateStr || r.day2 === dateStr || r.day1 === dateStr;
       });
+      const scheduledEvents = calendarEvents.filter(event => event.date === dateStr);
 
       const itemsHtml = [];
       ending.forEach(p => {
@@ -971,6 +1063,13 @@
         </div>`);
       });
 
+      scheduledEvents.forEach(event => {
+        itemsHtml.push(`<div class="flex items-center justify-between gap-2 bg-sky-950/30 border border-sky-500/30 px-3 py-1.5 rounded-xl">
+          <span>📌 <b>${escapeHtml(event.title)}</b>${event.time ? ` — ${escapeHtml(event.time)}` : ''}</span>
+          <button type="button" onclick="deleteCalendarEvent('${sanitizeId(event.id)}')" class="shrink-0 bg-red-500/10 hover:bg-red-500/25 text-red-300 px-2 py-0.5 rounded-lg text-[11px] font-bold" aria-label="حذف الموعد ${escapeHtml(event.title)}">حذف</button>
+        </div>`);
+      });
+
       box.innerHTML = `
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800">
           <span class="font-black text-amber-400">📅 أحداث يوم ${escapeHtml(dayName)} (${escapeHtml(dateStr)})</span>
@@ -978,6 +1077,13 @@
             + تسجيل لاعب بتاريخ ${escapeHtml(dateStr)}
           </button>
         </div>
+        <form onsubmit="event.preventDefault(); addCalendarEvent();" class="flex flex-col sm:flex-row gap-2 mb-2">
+          <label class="sr-only" for="calendarEventTitle">عنوان الموعد</label>
+          <input id="calendarEventTitle" type="text" maxlength="100" placeholder="أضف موعداً: صيانة الأجهزة، اجتماع..." class="min-w-0 flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] text-white">
+          <label class="sr-only" for="calendarEventTime">وقت الموعد (اختياري)</label>
+          <input id="calendarEventTime" type="time" aria-label="وقت الموعد (اختياري)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-[11px] text-white">
+          <button type="submit" class="bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 px-3 py-2 rounded-lg text-[11px] font-bold">حفظ الموعد</button>
+        </form>
         ${itemsHtml.length > 0 ? `<div class="space-y-1.5 max-h-36 overflow-y-auto">${itemsHtml.join('')}</div>` : `<p class="text-slate-400 text-center py-2">لا توجد مواعيد انتهاء أو بداية مسجلة في هذا اليوم.</p>`}
       `;
     }
@@ -3769,6 +3875,7 @@
         schemaVersion: SCHEMA_VERSION,
         gymProfile,
         financeLedger,
+        calendarEvents,
         exportedAt: new Date().toISOString(),
         totalPlayers: players.length,
         players
@@ -4011,6 +4118,7 @@
         schemaVersion: SCHEMA_VERSION,
         gymProfile,
         financeLedger,
+        calendarEvents,
         exportedAt: new Date().toISOString(),
         players,
         advanced: { attendance: JSON.parse(localStorage.getItem('pg_attendance_v1') || '[]'), inventory: JSON.parse(localStorage.getItem('pg_inventory_v1') || '[]'), sales: JSON.parse(localStorage.getItem('pg_sales_v1') || '[]'), trainers: JSON.parse(localStorage.getItem('pg_trainers_v1') || '[]'), closes: JSON.parse(localStorage.getItem('pg_daily_closes_v1') || '[]') }
@@ -4061,6 +4169,12 @@
           if (imported.financeLedger && typeof imported.financeLedger === 'object') {
             financeLedger = { ...financeLedger, ...imported.financeLedger };
             saveFinanceLedgerToStorage();
+          }
+
+          if (Array.isArray(imported.calendarEvents)) {
+            const importedEvents = imported.calendarEvents.map(sanitizeCalendarEvent).filter(Boolean);
+            if (!saveCalendarEventsToStorage(importedEvents)) return;
+            calendarEvents = importedEvents;
           }
 
           if (imported.advanced && typeof imported.advanced === 'object') {
