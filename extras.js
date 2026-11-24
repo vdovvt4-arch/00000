@@ -297,7 +297,7 @@
           <button type="button" onclick="closeCourseCamera()" class="text-slate-400 hover:text-white w-8 h-8 rounded-lg bg-slate-800"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <video id="camVideo" autoplay playsinline muted class="w-full max-h-[55vh] bg-black rounded-2xl object-contain"></video>
-        <p id="camStatus" class="text-xs text-amber-300 mt-2"></p>
+        <p id="camStatus" class="text-xs text-sky-300 mt-2"></p>
         <div class="flex flex-wrap items-center gap-2 mt-3">
           <select id="camSelect" onchange="switchCourseCamera(this.value)" style="display:none" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"></select>
           <button type="button" onclick="captureCoursePhoto()" class="flex-1 bg-sky-500 hover:bg-sky-400 text-black font-black py-2.5 rounded-xl"><i class="fa-solid fa-camera ml-1"></i> التقاط</button>
@@ -734,9 +734,9 @@
     modal.id = 'pgPrivacyCardModal';
     modal.className = 'fixed inset-0 modal-backdrop z-[55] hidden flex items-center justify-center p-4';
     modal.innerHTML = `
-      <div class="[--shadow:rgba(60,64,67,0.3)_0_1px_2px_0,rgba(60,64,67,0.15)_0_2px_6px_2px] w-4/5 h-auto rounded-2xl bg-white text-zinc-800 [box-shadow:var(--shadow)] max-w-[330px] border border-amber-500/30 mt-8">
+      <div class="[--shadow:rgba(60,64,67,0.3)_0_1px_2px_0,rgba(60,64,67,0.15)_0_2px_6px_2px] w-4/5 h-auto rounded-2xl bg-white text-zinc-800 [box-shadow:var(--shadow)] max-w-[330px] border border-sky-500/30 mt-8">
         <div class="flex flex-col items-center justify-between pt-9 px-6 pb-6 relative">
-          <span class="relative mx-auto -mt-16 mb-6 bg-white p-3 rounded-full shadow-lg border border-amber-200">
+          <span class="relative mx-auto -mt-16 mb-6 bg-white p-3 rounded-full shadow-lg border border-sky-200">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" height="46" width="65">
               <path stroke="#000" fill="#EAB789" d="M49.157 15.69L44.58.655l-12.422 1.96L21.044.654l-8.499 2.615-6.538 5.23-4.576 9.153v11.114l4.576 8.5 7.846 5.23 10.46 1.96 7.845-2.614 9.153 2.615 11.768-2.615 7.846-7.846 1.96-5.884.655-7.191-7.846-1.308-6.537-3.922z"></path>
               <path fill="#9C6750" d="M32.286 3.749c-6.94 3.65-11.69 11.053-11.69 19.591 0 8.137 4.313 15.242 10.724 19.052a20.513 20.513 0 01-8.723 1.937c-11.598 0-21-9.626-21-21.5 0-11.875 9.402-21.5 21-21.5 3.495 0 6.79.874 9.689 2.42z" clip-rule="evenodd" fill-rule="evenodd"></path>

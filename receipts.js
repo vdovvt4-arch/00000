@@ -292,7 +292,7 @@
     document.head.appendChild(style);
   }
 
-  const inputCls = 'w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500';
+  const inputCls = 'w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500';
   const lblCls = 'block text-xs font-bold text-slate-300 mb-1';
 
   function methodOptions(sel) {
@@ -312,7 +312,7 @@
           <input id="rcSearch" oninput="renderReceiptsList()" placeholder="بحث: رقم الوصل / الاسم / رقم العضوية" class="${inputCls} flex-1 min-w-[180px]">
           <input id="rcMonth" type="month" onchange="renderReceiptsList()" class="${inputCls} w-40" dir="ltr">
           <button onclick="openMiscReceiptModal()" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-3 py-2 rounded-xl text-xs font-bold"><i class="fa-solid fa-plus ml-1"></i>وصل إيراد متفرق</button>
-          <button onclick="openDailyCloseModal()" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 px-3 py-2 rounded-xl text-xs font-bold"><i class="fa-solid fa-cash-register ml-1"></i>إغلاق الصندوق اليومي</button>
+          <button onclick="openDailyCloseModal()" class="bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 px-3 py-2 rounded-xl text-xs font-bold"><i class="fa-solid fa-cash-register ml-1"></i>إغلاق الصندوق اليومي</button>
           <button onclick="openReceiptSettingsModal()" class="bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 px-3 py-2 rounded-xl text-xs font-bold"><i class="fa-solid fa-sliders ml-1"></i>إعدادات الوصل</button>
         </div>
         <div id="rcSummary" class="text-xs text-slate-300 mb-2"></div>
@@ -347,7 +347,7 @@
     <div id="rcCloseModal" class="fixed inset-0 modal-backdrop z-50 hidden flex items-center justify-center p-4">
       <div class="card-bg w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl p-5 border border-slate-700 shadow-2xl">
         <div class="flex justify-between items-center pb-3 border-b border-slate-800 mb-3">
-          <h3 class="text-lg font-black text-white"><i class="fa-solid fa-cash-register text-amber-400 ml-2"></i>إغلاق الصندوق اليومي</h3>
+          <h3 class="text-lg font-black text-white"><i class="fa-solid fa-cash-register text-sky-400 ml-2"></i>إغلاق الصندوق اليومي</h3>
           <button onclick="closeDailyCloseModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-lg bg-slate-800"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="flex flex-wrap items-center gap-2 mb-3">
@@ -455,7 +455,7 @@
     const totalPaid = valid.reduce((a, r) => a + (Number(r.paid) || 0), 0);
     const totalTax = valid.reduce((a, r) => a + (Number(r.tax) || 0), 0);
     const totalDiscount = valid.reduce((a, r) => a + (Number(r.discount) || 0), 0);
-    $('rcSummary').innerHTML = `عدد الوصولات: <b>${list.length}</b> (الملغاة ${list.length - valid.length}) · المقبوض: <b class="text-emerald-400">${money(totalPaid, s)}</b> · الخصومات: <b class="text-amber-400">${money(totalDiscount, s)}</b> · الضريبة: <b>${money(totalTax, s)}</b>`;
+    $('rcSummary').innerHTML = `عدد الوصولات: <b>${list.length}</b> (الملغاة ${list.length - valid.length}) · المقبوض: <b class="text-emerald-400">${money(totalPaid, s)}</b> · الخصومات: <b class="text-sky-400">${money(totalDiscount, s)}</b> · الضريبة: <b>${money(totalTax, s)}</b>`;
     $('rcRows').innerHTML = list.length === 0
       ? '<tr><td colspan="8" class="p-4 text-center text-slate-500">لا توجد وصولات.</td></tr>'
       : list.slice(0, 300).map(r => `<tr class="border-t border-slate-800 ${r.voided ? 'opacity-50 line-through' : ''}">
@@ -721,7 +721,7 @@
     return `
       <div class="grid grid-cols-2 gap-3" id="${prefix}Extra">
         <div>
-          <label class="block text-xs font-bold text-amber-400 mb-1">الخصم (يُخصم من سعر الباقة)</label>
+          <label class="block text-xs font-bold text-sky-400 mb-1">الخصم (يُخصم من سعر الباقة)</label>
           <input type="number" id="${prefix}Discount" min="0" step="500" value="0" class="${inputCls}">
         </div>
         <div>

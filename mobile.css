@@ -234,9 +234,9 @@ button, a, select, label, input {
     padding: 0 !important;
     justify-content: center;
     color: #111008 !important;
-    background: #facc15 !important;
+    background: #22d3ee !important;
     border-radius: 12px;
-    box-shadow: 0 4px 14px rgba(250, 204, 21, 0.2);
+    box-shadow: 0 4px 14px rgba(34,211,238, 0.2);
   }
 
   header .pg-cyber-btn--sm > span:first-of-type {

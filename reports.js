@@ -367,7 +367,7 @@
       .rpt-kpi { background:#0b1a2e; border:1px solid #1e3a5f; border-radius:14px; padding:10px 12px; }
       .rpt-kpi span { display:block; font-size:11px; color:#94a3b8; font-weight:700; }
       .rpt-kpi b { display:block; font-size:16px; color:#fff; margin-top:4px; }
-      .rpt-kpi.ok b { color:#34d399; } .rpt-kpi.warn b { color:#fbbf24; } .rpt-kpi.bad b { color:#f87171; }
+      .rpt-kpi.ok b { color:#34d399; } .rpt-kpi.warn b { color:#38bdf8; } .rpt-kpi.bad b { color:#f87171; }
       .rpt-section { margin-bottom:16px; } .rpt-section h3 { font-size:14px; font-weight:900; color:#38bdf8; margin-bottom:8px; }
       .rpt-two { display:grid; grid-template-columns:1fr; gap:12px; } @media (min-width:768px){ .rpt-two { grid-template-columns:1fr 1fr; } }
       .rpt-box { background:#0b1a2e; border:1px solid #1e3a5f; border-radius:14px; padding:12px; }
@@ -378,7 +378,7 @@
       .rpt-table .num, th.num { text-align:left; }
       .rpt-strong td { font-weight:900; color:#fff; }
       .rpt-empty { font-size:12px; color:#64748b; padding:6px 0; }
-      .rpt-note { font-size:12px; color:#fbbf24; margin-bottom:6px; }
+      .rpt-note { font-size:12px; color:#38bdf8; margin-bottom:6px; }
       .rpt-foot { font-size:11px; color:#64748b; border-top:1px solid #1e3a5f; padding-top:10px; line-height:1.8; }
       #monthlyReportPrint { display:none; }
       @media print {

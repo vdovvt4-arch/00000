@@ -66,10 +66,10 @@ body::before {
 }
 .pg-hero__carousel span {
   padding: 3px 9px;
-  border: 1px solid rgba(250,204,21,.24);
+  border: 1px solid rgba(34,211,238,.24);
   border-radius: 999px;
   background: rgba(8,9,7,.58);
-  color: #fff0a3;
+  color: #cffafe;
   font-size: 10px;
   font-weight: 800;
 }
@@ -353,8 +353,8 @@ body::before {
 }
 
 .card.pg-profile-card.pg-status-soon {
-  --card-accent: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.4);
+  --card-accent: #0ea5e9;
+  border-color: rgba(14,165,233, 0.4);
 }
 
 .card.pg-profile-card.pg-status-expired {
@@ -853,7 +853,7 @@ body::before {
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
   transition: width 600ms ease;
 }
-.pg-progress--soon > span { background: linear-gradient(90deg, #fde68a, #f59e0b); box-shadow: 0 0 12px rgba(251, 191, 36, 0.6); }
+.pg-progress--soon > span { background: linear-gradient(90deg, #a5f3fc, #0ea5e9); box-shadow: 0 0 12px rgba(56,189,248, 0.6); }
 .pg-progress--expired > span { background: linear-gradient(90deg, #fca5a5, #dc2626); box-shadow: 0 0 12px rgba(248, 113, 113, 0.6); }
 
 /* الجدول */

@@ -235,7 +235,7 @@
 
       const steps = [
         { p: 38, t: 'جاري تحميل هيكلة البيانات وحسابات التقويم الذكي...', d: 280 },
-        { p: 72, t: 'جاري الاتصال ببوت التليكرام (@Powargym_bot)...', d: 600 },
+        { p: 72, t: 'جاري مزامنة قاعدة البيانات السحابية...', d: 600 },
         { p: 100, t: gymProfile.supervisorName
             ? `مرحباً بك كابتن ${escapeHtml(gymProfile.supervisorName)} في منظومة Power Gym الذكية! 💪🔥`
             : 'مرحباً بك في منظومة Power Gym الذكية! 💪🔥', d: 950 }
@@ -245,7 +245,7 @@
         setTimeout(() => {
           if (bar) bar.style.width = s.p + '%';
           if (pct) pct.textContent = s.p + '%';
-          if (status) status.innerHTML = `<i class="fa-solid fa-circle-check text-amber-400"></i> <span>${s.t}</span>`;
+          if (status) status.innerHTML = `<i class="fa-solid fa-circle-check text-sky-400"></i> <span>${s.t}</span>`;
         }, s.d);
       });
 
@@ -469,7 +469,7 @@
     function applyGymBrandingToUI() {
       const nameParts = gymProfile.gymName.split('|');
       const mainTitle = escapeHtml(nameParts[0] || 'Power Gym');
-      const subTitle = nameParts[1] ? `<span class="text-amber-500">| ${escapeHtml(nameParts[1].trim())}</span>` : '';
+      const subTitle = nameParts[1] ? `<span class="text-sky-500">| ${escapeHtml(nameParts[1].trim())}</span>` : '';
 
       const headerTitleEl = document.getElementById('headerGymTitle');
       if (headerTitleEl) headerTitleEl.innerHTML = `${mainTitle} ${subTitle}`;
@@ -483,12 +483,12 @@
 
       const headerSubEl = document.getElementById('headerGymSubtitle');
       if (headerSubEl) {
-        headerSubEl.innerHTML = `<i class="fa-solid fa-location-dot text-amber-500"></i><span>${escapeHtml(gymProfile.gymBranch)}</span>`;
+        headerSubEl.innerHTML = `<i class="fa-solid fa-location-dot text-sky-500"></i><span>${escapeHtml(gymProfile.gymBranch)}</span>`;
       }
 
       const splashSubEl = document.getElementById('splashGymSubtitle');
       if (splashSubEl) {
-        splashSubEl.innerHTML = `<i class="fa-solid fa-location-dot text-amber-500"></i><span>${escapeHtml(gymProfile.gymBranch)}</span>`;
+        splashSubEl.innerHTML = `<i class="fa-solid fa-location-dot text-sky-500"></i><span>${escapeHtml(gymProfile.gymBranch)}</span>`;
       }
     }
 
@@ -698,14 +698,14 @@
       const colors = {
         success: 'bg-emerald-950/95 border-emerald-500 text-emerald-200',
         error: 'bg-red-950/95 border-red-500 text-red-200',
-        warning: 'bg-amber-950/95 border-amber-500 text-amber-200',
+        warning: 'bg-sky-950/95 border-sky-500 text-sky-200',
         info: 'bg-slate-900/95 border-blue-500 text-blue-200'
       };
 
       const icons = {
         success: 'fa-circle-check text-emerald-400',
         error: 'fa-circle-exclamation text-red-400',
-        warning: 'fa-triangle-exclamation text-amber-400',
+        warning: 'fa-triangle-exclamation text-sky-400',
         info: 'fa-circle-info text-blue-400'
       };
 
@@ -823,8 +823,8 @@
           status: 'soon',
           diffDays,
           label: diffDays === 0 ? 'ينتهي اليوم!' : `ينتهي خلال ${diffDays} أيام`,
-          badgeClass: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
-          borderClass: 'border-amber-500/50'
+          badgeClass: 'bg-sky-500/15 text-sky-400 border border-sky-500/30',
+          borderClass: 'border-sky-500/50'
         };
       } else {
         return {
@@ -912,18 +912,18 @@
         html += `
           <div onclick="selectCalendarDate('${dateStr}')" class="p-2 rounded-xl cursor-pointer transition min-h-[68px] flex flex-col justify-between border ${
             isSelected
-              ? 'bg-amber-500/20 border-amber-400 shadow-lg'
+              ? 'bg-sky-500/20 border-sky-400 shadow-lg'
               : isToday
-                ? 'bg-slate-900 border-amber-500/60'
+                ? 'bg-slate-900 border-sky-500/60'
                 : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-600'
           }">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-black ${isToday ? 'text-amber-400' : 'text-slate-200'}">${day}</span>
-              ${isToday ? `<span class="text-[9px] bg-amber-500 text-black font-black px-1 rounded">اليوم</span>` : ''}
+              <span class="text-xs font-black ${isToday ? 'text-sky-400' : 'text-slate-200'}">${day}</span>
+              ${isToday ? `<span class="text-[9px] bg-sky-500 text-black font-black px-1 rounded">اليوم</span>` : ''}
             </div>
             <div class="flex flex-wrap gap-1 mt-1">
               ${startedCount > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold" title="بدء اشتراك">${startedCount} بدء</span>` : ''}
-              ${reminderCount > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold" title="إشعار تذكير الـ 3 أيام">${reminderCount} تذكير</span>` : ''}
+              ${reminderCount > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-bold" title="إشعار تذكير الـ 3 أيام">${reminderCount} تذكير</span>` : ''}
               ${endedCount > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 font-bold" title="انتهاء اشتراك">${endedCount} ينتهي</span>` : ''}
             </div>
           </div>
@@ -958,9 +958,9 @@
       reminders.forEach(p => {
         const r = getThreeReminderDates(p.endDate);
         const whichNum = r.day3 === dateStr ? '1/3 (قبل 3 أيام)' : r.day2 === dateStr ? '2/3 (قبل يومين)' : '3/3 (قبل يوم واحد)';
-        itemsHtml.push(`<div class="flex items-center justify-between bg-amber-950/30 border border-amber-500/30 px-3 py-1.5 rounded-xl">
+        itemsHtml.push(`<div class="flex items-center justify-between bg-sky-950/30 border border-sky-500/30 px-3 py-1.5 rounded-xl">
           <span>🔔 <b>موعد إشعار التذكير (${whichNum}):</b> ${escapeHtml(p.name)} — ينتهي ${escapeHtml(p.endDate)}</span>
-          <button onclick="sendThreeDayReminderToPlayerById('${sanitizeId(p.id)}')" class="bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 px-2 py-0.5 rounded-lg text-[11px] font-bold">إرسال تذكير 🔔</button>
+          <button onclick="sendThreeDayReminderToPlayerById('${sanitizeId(p.id)}')" class="bg-sky-500/20 hover:bg-sky-500/40 text-sky-300 px-2 py-0.5 rounded-lg text-[11px] font-bold">إرسال تذكير 🔔</button>
         </div>`);
       });
 
@@ -973,8 +973,8 @@
 
       box.innerHTML = `
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800">
-          <span class="font-black text-amber-400">📅 أحداث يوم ${escapeHtml(dayName)} (${escapeHtml(dateStr)})</span>
-          <button onclick="openAddModalWithDate('${escapeHtml(dateStr)}')" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg text-[11px] font-bold">
+          <span class="font-black text-sky-400">📅 أحداث يوم ${escapeHtml(dayName)} (${escapeHtml(dateStr)})</span>
+          <button onclick="openAddModalWithDate('${escapeHtml(dateStr)}')" class="bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 px-2.5 py-1 rounded-lg text-[11px] font-bold">
             + تسجيل لاعب بتاريخ ${escapeHtml(dateStr)}
           </button>
         </div>
@@ -1016,25 +1016,25 @@
         </div>
         <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
           <span class="text-slate-400">المدة الصافية:</span>
-          <span class="font-bold text-amber-400">${months} شهر ${extraDays > 0 ? `+ ${extraDays} يوم` : ''} (${escapeHtml(sub.label)})</span>
+          <span class="font-bold text-sky-400">${months} شهر ${extraDays > 0 ? `+ ${extraDays} يوم` : ''} (${escapeHtml(sub.label)})</span>
         </div>
         <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
           <span class="text-slate-400">السعر المخصص:</span>
           <span class="font-black text-purple-400">${Number(defaultPrice).toLocaleString('en-US')} د.ع</span>
         </div>
         <div class="pt-1 space-y-1">
-          <span class="block text-[11px] font-black text-amber-400">🔔 مواعيد إشعارات التليكرام الـ 3 قبل الانتهاء:</span>
+          <span class="block text-[11px] font-black text-sky-400">🔔 مواعيد إشعارات التليكرام الـ 3 قبل الانتهاء:</span>
           <div class="text-[11px] text-slate-300 bg-slate-900 px-2.5 py-1 rounded-lg flex justify-between">
             <span>1️⃣ الإشعار الأول (قبل 3 أيام):</span>
-            <b class="text-amber-300" dir="ltr">${escapeHtml(reminders.day3)}</b>
+            <b class="text-sky-300" dir="ltr">${escapeHtml(reminders.day3)}</b>
           </div>
           <div class="text-[11px] text-slate-300 bg-slate-900 px-2.5 py-1 rounded-lg flex justify-between">
             <span>2️⃣ الإشعار الثاني (قبل يومين):</span>
-            <b class="text-amber-300" dir="ltr">${escapeHtml(reminders.day2)}</b>
+            <b class="text-sky-300" dir="ltr">${escapeHtml(reminders.day2)}</b>
           </div>
           <div class="text-[11px] text-slate-300 bg-slate-900 px-2.5 py-1 rounded-lg flex justify-between">
             <span>3️⃣ الإشعار الثالث (قبل يوم):</span>
-            <b class="text-amber-300" dir="ltr">${escapeHtml(reminders.day1)}</b>
+            <b class="text-sky-300" dir="ltr">${escapeHtml(reminders.day1)}</b>
           </div>
         </div>
       `;
@@ -1126,7 +1126,7 @@
         const content = document.getElementById(`finTabContent-${t}`);
         if (!btn || !content) return;
         if (t === tabName) {
-          btn.className = 'px-4 py-2 rounded-xl text-xs font-black bg-amber-500 text-black transition whitespace-nowrap';
+          btn.className = 'px-4 py-2 rounded-xl text-xs font-black bg-sky-500 text-black transition whitespace-nowrap';
           content.classList.remove('hidden');
         } else {
           btn.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition whitespace-nowrap';
@@ -1264,7 +1264,7 @@
         return `
           <div class="bg-slate-950/85 border ${hasDebt ? 'border-rose-500/40' : 'border-slate-800'} rounded-2xl p-3 flex flex-col items-stretch gap-3 text-xs">
             <div class="flex items-center gap-2.5 w-full md:w-auto">
-              <span class="px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-black" dir="ltr">${escapeHtml(p.code)}</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-sky-400 font-black" dir="ltr">${escapeHtml(p.code)}</span>
               <div>
                 <div class="font-black text-white text-sm">${escapeHtml(p.name)}</div>
                 <div class="text-[11px] text-slate-400">${escapeHtml(p.phone)} | ينتهي: ${escapeHtml(p.endDate)}</div>
@@ -1280,7 +1280,7 @@
                 <label class="block text-[10px] text-rose-400 font-bold">الدين المتبقي (د.ع)</label>
                 <input type="number" id="quickDebt_${safeId}" value="${Number(p.debtAmount) || 0}" step="500" min="0" class="w-28 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold">
               </div>
-              <button onclick="updatePlayerFinanceQuick('${safeId}')" class="bg-amber-500 hover:bg-amber-400 text-black font-black px-3 py-2 rounded-xl mt-3.5 transition">
+              <button onclick="updatePlayerFinanceQuick('${safeId}')" class="bg-sky-500 hover:bg-sky-400 text-black font-black px-3 py-2 rounded-xl mt-3.5 transition">
                 حفظ 💾
               </button>
               ${hasDebt ? `
@@ -1313,7 +1313,7 @@
                 سجل المشتريات والديون (${playerEntries.length}) — ${trackedDebt.toLocaleString('en-US')} د.ع مسجل
               </summary>
               <div class="space-y-2 mt-2">
-                ${untrackedDebt > 0 ? `<div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 text-[11px] text-amber-200">رصيد سابق غير مفصل: ${untrackedDebt.toLocaleString('en-US')} د.ع — لا تتوفر له تفاصيل مشتريات محفوظة.</div>` : ''}
+                ${untrackedDebt > 0 ? `<div class="bg-sky-500/10 border border-sky-500/20 rounded-xl p-2 text-[11px] text-sky-200">رصيد سابق غير مفصل: ${untrackedDebt.toLocaleString('en-US')} د.ع — لا تتوفر له تفاصيل مشتريات محفوظة.</div>` : ''}
                 ${playerEntries.length ? playerEntries.map(entry => {
                   const remaining = Math.max(0, Number(entry.amount) - Number(entry.paidAmount || 0));
                   return `<div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2">
@@ -1507,8 +1507,7 @@
 
     function generateWhatsAppLink(player) {
       const intlPhone = formatIraqiPhone(player.phone);
-      const botDeepLink = `https://t.me/${BOT_USERNAME}?start=ACT_${intlPhone}`;
-      const message = `السلام عليكم كابتن ${player.name} الحبيب 💪🔥،\nتم تفعيل/تحديث بيانات اشتراكك في *${gymProfile.gymName}* (${gymProfile.gymBranch}).\n📅 تاريخ البدء: ${player.startDate}\n⏳ المدة: ${player.durationMonths} شهر\n🏁 تاريخ الانتهاء (شوكت يخلص): ${player.endDate}\n\n📲 اضغط على الرابط التالي لتفعيل إشعارات اشتراكك على بوت التليكرام:\n${botDeepLink}`;
+      const message = `السلام عليكم كابتن ${player.name} الحبيب 💪🔥،\nتم تفعيل/تحديث بيانات اشتراكك في *${gymProfile.gymName}* (${gymProfile.gymBranch}).\n📅 تاريخ البدء: ${player.startDate}\n⏳ المدة: ${player.durationMonths} شهر\n🏁 تاريخ الانتهاء: ${player.endDate}\n\nنتمنى لك تمريناً موفقاً!`;
       return `https://wa.me/${intlPhone}?text=${encodeURIComponent(message)}`;
     }
 
@@ -2070,7 +2069,7 @@
 
     function openAddModal() {
       document.getElementById('editingPlayerId').value = '';
-      document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-user-plus text-amber-500"></i><span>إضافة لاعب جديد</span>`;
+      document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-user-plus text-sky-500"></i><span>إضافة لاعب جديد</span>`;
       document.getElementById('saveBtn').textContent = COACH_MODE
         ? 'حفظ التسجيل على هذا الهاتف'
         : 'حفظ وإرسال رسالة التفعيل للتليكرام';
@@ -2100,7 +2099,7 @@
       if (!player) return;
 
       document.getElementById('editingPlayerId').value = player.id;
-      document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-user-pen text-amber-500"></i><span>تعديل بيانات اللاعب</span>`;
+      document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-user-pen text-sky-500"></i><span>تعديل بيانات اللاعب</span>`;
       document.getElementById('saveBtn').textContent = 'حفظ التعديلات وإرسال التفعيل';
 
       document.getElementById('playerName').value = player.name;
@@ -2487,7 +2486,7 @@
         list.innerHTML = auditLogs.map(item => `
           <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex justify-between items-center gap-3">
             <span class="text-slate-200 font-semibold">${escapeHtml(item.action)}</span>
-            <span class="text-[10px] text-amber-400 whitespace-nowrap" dir="ltr">${escapeHtml(item.time)}</span>
+            <span class="text-[10px] text-sky-400 whitespace-nowrap" dir="ltr">${escapeHtml(item.time)}</span>
           </div>
         `).join('');
       }
@@ -2508,7 +2507,7 @@
         const btn = document.getElementById(`flt-${flt}`);
         if (!btn) return;
         if (flt === filterType) {
-          btn.className = 'filter-btn bg-amber-500 text-black px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition';
+          btn.className = 'filter-btn bg-sky-500 text-black px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition';
         } else {
           btn.className = 'filter-btn bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition hover:bg-slate-700';
         }
@@ -2524,12 +2523,12 @@
       const tableContainer = document.getElementById('playersTableContainer');
 
       if (mode === 'table') {
-        tableBtn.className = 'px-2.5 py-1 rounded-md bg-amber-500 text-black font-bold transition';
+        tableBtn.className = 'px-2.5 py-1 rounded-md bg-sky-500 text-black font-bold transition';
         cardsBtn.className = 'px-2.5 py-1 rounded-md text-slate-400 hover:text-white font-bold transition';
         grid.classList.add('hidden');
         tableContainer.classList.remove('hidden');
       } else {
-        cardsBtn.className = 'px-2.5 py-1 rounded-md bg-amber-500 text-black font-bold transition';
+        cardsBtn.className = 'px-2.5 py-1 rounded-md bg-sky-500 text-black font-bold transition';
         tableBtn.className = 'px-2.5 py-1 rounded-md text-slate-400 hover:text-white font-bold transition';
         tableContainer.classList.add('hidden');
         grid.classList.remove('hidden');
@@ -2707,7 +2706,7 @@
           : `<button type="button" onclick="openAddModal()" class="gold-gradient mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-black"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>إضافة أول لاعب</button>`;
         const emptyHtml = `
           <div class="col-span-full card-bg rounded-3xl p-12 text-center border border-dashed border-slate-700">
-            <div class="w-16 h-16 rounded-2xl bg-slate-800/80 text-amber-500 flex items-center justify-center text-3xl mx-auto mb-4">
+            <div class="w-16 h-16 rounded-2xl bg-slate-800/80 text-sky-500 flex items-center justify-center text-3xl mx-auto mb-4">
               <i class="fa-solid ${hasPlayers ? 'fa-filter-circle-xmark' : 'fa-user-plus'}"></i>
             </div>
             <h3 class="text-lg font-black text-white mb-1">${emptyTitle}</h3>
@@ -2735,7 +2734,7 @@
         const bannerGrad = sub.status === 'expired'
           ? ['#450a0a', '#991b1b', '#ef4444']
           : sub.status === 'soon'
-            ? ['#451a03', '#b45309', '#f59e0b']
+            ? ['#451a03', '#0369a1', '#0ea5e9']
             : ['#082f49', '#1d4ed8', '#38bdf8'];
 
         return `
@@ -2860,11 +2859,11 @@
                 </button>
 
                 <button type="button" onclick="openPlayerCourseModal('${safeId}')" class="card__btn !min-w-[40px] !px-2.5" title="عرض وتعديل الكورس والصور" aria-label="فتح ملف كورس اللاعب ${escapeHtml(player.name)}">
-                  <i class="fa-solid fa-notes-medical text-amber-300"></i>
+                  <i class="fa-solid fa-notes-medical text-sky-300"></i>
                 </button>
 
                 <button type="button" onclick="sendThreeDayReminderToPlayerById('${safeId}')" class="card__btn !min-w-[40px] !px-2.5" title="إرسال تذكير بانتهاء الاشتراك" aria-label="إرسال تذكير بانتهاء اشتراك اللاعب ${escapeHtml(player.name)}">
-                  <i class="fa-solid fa-bell text-amber-400"></i>
+                  <i class="fa-solid fa-bell text-sky-400"></i>
                 </button>
               </div>
             </div>
@@ -2883,7 +2882,7 @@
           <tr class="hover:bg-slate-900/60 transition">
             <td class="p-3">
               <div class="flex items-center gap-2.5">
-                <img src="${avatarSrc}" class="w-10 h-10 rounded-full object-cover border border-amber-500">
+                <img src="${avatarSrc}" class="w-10 h-10 rounded-full object-cover border border-sky-500">
                 <div>
                   <div class="font-black text-white">${escapeHtml(player.name)}</div>
                   <div class="text-[11px] text-slate-400">${Number(player.age)} سنة</div>
@@ -2891,13 +2890,13 @@
               </div>
             </td>
             <td class="p-3">
-              <span class="text-[11px] font-bold text-amber-400 block" dir="ltr">${escapeHtml(player.code || 'PG')}</span>
+              <span class="text-[11px] font-bold text-sky-400 block" dir="ltr">${escapeHtml(player.code || 'PG')}</span>
               <span class="text-[11px] text-slate-400">${escapeHtml(player.planType || 'حديد عام')}</span>
             </td>
             <td class="p-3 font-bold text-slate-200" dir="ltr">${escapeHtml(player.phone)}</td>
             <td class="p-3">
               <div class="text-slate-300">من: ${escapeHtml(player.startDate)} (${Number(player.durationMonths)} شهر)</div>
-              <div class="font-bold text-amber-400">شوكت يخلص: ${escapeHtml(player.endDate)}</div>
+              <div class="font-bold text-sky-400">شوكت يخلص: ${escapeHtml(player.endDate)}</div>
             </td>
             <td class="p-3">
               <div class="text-emerald-400 font-bold">${Number(player.paidAmount || 0).toLocaleString('en-US')} د.ع</div>
@@ -2910,7 +2909,7 @@
               <div class="flex items-center justify-center gap-1.5">
                 <button onclick="${player.activationSent ? 'sendSubscriptionAlertById' : 'sendPlayerActivationMessageById'}('${safeId}')" class="${player.activationSent ? 'bg-sky-600' : 'bg-blue-600'} text-white p-2 rounded-lg" title="${player.activationSent ? 'إرسال تنبيه اشتراك' : 'إرسال رسالة تفعيل للتلي'}"><i class="fa-brands fa-telegram"></i></button>
                 <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 text-white p-2 rounded-lg" title="التواصل مع ${escapeHtml(player.name)} عبر واتساب" aria-label="واتساب ${escapeHtml(player.name)}"><i class="fa-brands fa-whatsapp"></i></a>
-                <button type="button" onclick="openRenewModal('${safeId}')" class="bg-amber-500/20 text-amber-400 p-2 rounded-lg" title="تجديد الاشتراك" aria-label="تجديد اشتراك ${escapeHtml(player.name)}"><i class="fa-solid fa-arrows-rotate"></i></button>
+                <button type="button" onclick="openRenewModal('${safeId}')" class="bg-sky-500/20 text-sky-400 p-2 rounded-lg" title="تجديد الاشتراك" aria-label="تجديد اشتراك ${escapeHtml(player.name)}"><i class="fa-solid fa-arrows-rotate"></i></button>
                 <button type="button" onclick="openIdCardModal('${safeId}')" class="bg-purple-500/20 text-purple-400 p-2 rounded-lg" title="عرض بطاقة العضوية" aria-label="عرض بطاقة عضوية ${escapeHtml(player.name)}"><i class="fa-solid fa-id-card"></i></button>
                 <button type="button" onclick="openPlayerCourseModal('${safeId}')" class="bg-blue-500/20 text-blue-300 p-2 rounded-lg" title="عرض ملف الكورس" aria-label="فتح ملف كورس ${escapeHtml(player.name)}"><i class="fa-solid fa-notes-medical"></i></button>
                 <button type="button" onclick="openEditModal('${safeId}')" class="bg-slate-800 text-slate-300 p-2 rounded-lg" title="تعديل بيانات اللاعب" aria-label="تعديل بيانات ${escapeHtml(player.name)}"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -3776,7 +3775,7 @@
 
       const rowsHtml = players.map((p, idx) => {
         const sub = getSubscriptionStatus(p.endDate);
-        const statusColor = sub.status === 'expired' ? '#ef4444' : sub.status === 'soon' ? '#f59e0b' : '#10b981';
+        const statusColor = sub.status === 'expired' ? '#ef4444' : sub.status === 'soon' ? '#0ea5e9' : '#10b981';
         return `
           <tr>
             <td>${idx + 1}</td>
@@ -3784,7 +3783,7 @@
             <td dir="ltr">${escapeHtml(p.phone)}</td>
             <td>${escapeHtml(p.planType)}</td>
             <td>${escapeHtml(p.startDate)}</td>
-            <td style="color:#f59e0b;font-weight:800;">${Number(p.durationMonths)} شهر</td>
+            <td style="color:#0ea5e9;font-weight:800;">${Number(p.durationMonths)} شهر</td>
             <td style="color:${statusColor};font-weight:900;">${escapeHtml(p.endDate)} (${escapeHtml(getArabicDayName(p.endDate))})</td>
             <td><span style="padding:3px 8px;border-radius:8px;background:rgba(255,255,255,0.06);color:${statusColor};font-weight:800;">${escapeHtml(sub.label)}</span></td>
             <td style="color:#10b981;font-weight:800;">${Number(p.paidAmount || 0).toLocaleString('en-US')} د.ع</td>

@@ -1,7 +1,7 @@
 // Service Worker - Power Gym (نسخة الويب/الهاتف PWA)
 // - ملفات التطبيق: الشبكة أولاً ثم النسخة المخزنة (لتصل التحديثات ويعمل بدون إنترنت)
 // - ملفات الـ CDN (Tailwind / الخطوط / الأيقونات): من الذاكرة أولاً مع تحديث بالخلفية
-const CACHE_NAME = 'power-gym-web-v13';
+const CACHE_NAME = 'power-gym-web-v21';
 const LOCAL_ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const LOCAL_ASSETS = [
   './theme.css',
   './mobile.css',
   './studio.css',
+  './modern-theme.css',
   './storage-shim.js',
   './app.js',
   './ui-enhancements.js',
@@ -17,6 +18,12 @@ const LOCAL_ASSETS = [
   './extras.js',
   './advanced.js',
   './studio-motion.js',
+  './cloud-sync.js',
+  './smart-gym.js',
+  './smart-ops.js',
+  './store-admin.js',
+  './store.html',
+  './store.js',
   './manifest.json',
   './logo.svg',
   './icon.png',
@@ -47,7 +54,7 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.hostname === 'api.telegram.org' || url.hostname === 'api.qrserver.com') return;
+  if (url.hostname === 'api.qrserver.com' || url.hostname.endsWith('.supabase.co')) return;
 
   if (url.origin === self.location.origin) {
     event.respondWith(
