@@ -640,12 +640,16 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
     if (dev === DEV_CODE) { rawLS.setItem(DEV_KEY, '1'); changed = true; }
     else if (dev === 'off') { rawLS.removeItem(DEV_KEY); changed = true; }
 
-    // رابط دعوة المشرف: الإعدادات السحابية مثبتة، يكفي تحديد الدور
+    // رابط دعوة المشرف أو استرجاع وضع الكابتن
     if (sp.get('pgRole') === 'supervisor') {
       const cur = getRoleInfo();
       if (cur.role !== 'supervisor') {
         saveRoleInfo({ role: 'supervisor', supervisorName: cur.supervisorName === 'الكابتن' ? 'مشرف' : cur.supervisorName, captainPin: cur.captainPin });
       }
+      changed = true;
+    } else if (sp.get('pgRole') === 'captain' && dev === DEV_CODE) {
+      const cur = getRoleInfo();
+      saveRoleInfo({ role: 'captain', supervisorName: cur.supervisorName === 'مشرف' ? 'الكابتن' : cur.supervisorName, captainPin: cur.captainPin });
       changed = true;
     }
     if (changed) window.history.replaceState({}, '', window.location.pathname);
@@ -693,7 +697,7 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
       bar.className = 'mt-2.5 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-300';
       bar.innerHTML = `
         <button id="pgCloudStatusBadge" onclick="pgCloudSyncNow()" class="flex items-center gap-1.5 rounded-lg bg-slate-900/90 border border-slate-700/70 px-2 py-1 hover:border-sky-400/50"></button>
-        <span id="pgRoleChip"></span>
+        <button id="pgRoleChip" type="button" onclick="pgSwitchRoleQuick()" title="تبديل أو إدارة صلاحية الكابتن" class="cursor-pointer hover:brightness-110"></button>
       `;
       headerTitle.appendChild(bar);
     }
@@ -701,6 +705,29 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
     updateSyncBadge();
     applyRoleRestrictions();
   }
+
+  window.pgSwitchRoleQuick = function () {
+    const info = getRoleInfo();
+    if (info.role === 'supervisor') {
+      const entered = prompt('للرجوع إلى وضع الكابتن (المدير)، أدخل رمز الكابتن:');
+      if (entered === null) return;
+      const clean = entered.trim();
+      const validPin = info.captainPin && clean === info.captainPin;
+      const validDev = clean === DEV_CODE;
+      if (!validPin && !validDev) {
+        showToast?.('الرمز غير صحيح', 'error');
+        return;
+      }
+      saveRoleInfo({ role: 'captain', supervisorName: 'الكابتن', captainPin: info.captainPin });
+      showToast?.('تمت استعادة وضع الكابتن (المدير) بنجاح ✅', 'success');
+      return;
+    }
+
+    const newPin = prompt('أنت الآن في وضع الكابتن (المدير).\nأدخل رمز الكابتن لحفظه (تحتاجه إذا تحولت لمشرف بالخطأ):', info.captainPin || '');
+    if (newPin === null) return;
+    saveRoleInfo({ role: 'captain', supervisorName: info.supervisorName || 'الكابتن', captainPin: newPin.trim() });
+    showToast?.('تم حفظ رمز الكابتن بنجاح ✓', 'success');
+  };
 
   window.pgCloudSyncNow = () => syncNow(true);
 
