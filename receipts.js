@@ -334,6 +334,7 @@
             ${Object.entries(PAPERS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
           </select>
           <button onclick="printCurrentReceipt()" class="bg-emerald-500 hover:bg-emerald-400 text-black font-black px-4 py-2 rounded-xl text-sm"><i class="fa-solid fa-print ml-1"></i>طباعة</button>
+          <button onclick="sendCurrentReceiptWhatsApp()" class="bg-green-600 hover:bg-green-500 text-white font-black px-4 py-2 rounded-xl text-sm"><i class="fa-brands fa-whatsapp ml-1"></i>إرسال الوصل واتساب</button>
         </div>
         <div class="overflow-x-auto bg-slate-200 rounded-2xl p-3"><div id="rcPreview"></div></div>
         <div id="rcVoidBox" class="mt-3 flex flex-wrap gap-2 items-center">
@@ -507,6 +508,44 @@
     rec.printCount = (rec.printCount || 0) + 1; // الطبعات اللاحقة تظهر كـ "نسخة"
     persist();
     refreshView();
+  };
+
+  window.sendCurrentReceiptWhatsApp = function () {
+    const rec = findReceipt(viewingId);
+    if (!rec) return;
+    let rawPhone = rec.phone || rec.playerPhone || '';
+    if (!rawPhone && typeof players !== 'undefined' && Array.isArray(players)) {
+      const p = players.find(x => (rec.playerId && x.id === rec.playerId) || (rec.playerName && x.name === rec.playerName));
+      if (p) rawPhone = p.phone || '';
+    }
+    let digits = String(rawPhone || '').replace(/\D/g, '');
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    if (digits.startsWith('07') && digits.length === 11) digits = '964' + digits.slice(1);
+    else if (digits.startsWith('7') && digits.length === 10) digits = '964' + digits;
+    if (!digits || digits.length < 10) {
+      if (typeof showToast === 'function') showToast('لا يوجد رقم هاتف صالح لهذا الشخص لإرسال الوصل عبر واتساب', 'warning');
+      return;
+    }
+    const gym = (typeof gymProfile !== 'undefined' && gymProfile.gymName) ? gymProfile.gymName : 'Power Gym';
+    const typeLabel = TYPES[rec.type] || 'استلام';
+    const amount = Number(rec.amount || rec.paidAmount || 0).toLocaleString('en-US');
+    const debt = Number(rec.debtAfter ?? rec.debtAmount ?? 0).toLocaleString('en-US');
+    const lines = [
+      `🧾 *وصل ${typeLabel} — ${gym}*`,
+      `رقم الوصل: *${rec.no || '-'}*`,
+      `التاريخ: ${rec.date || new Date().toISOString().slice(0, 10)}`,
+      rec.playerName ? `اللاعب: *${rec.playerName}*` : '',
+      rec.playerCode ? `رقم العضوية: ${rec.playerCode}` : '',
+      `المبلغ المدفوع: *${amount} د.ع*`,
+      Number(rec.debtAfter ?? rec.debtAmount ?? 0) > 0 ? `المتبقي (الدين): ${debt} د.ع` : '',
+      rec.endDate ? `تاريخ انتهاء الاشتراك: ${rec.endDate}` : '',
+      rec.note || rec.description ? `التفاصيل: ${rec.note || rec.description}` : '',
+      rec.voided ? '⚠️ *هذا الوصل ملغي*' : 'شكراً لاشتراكك معنا 💪'
+    ].filter(Boolean).join('\n');
+    const url = `https://wa.me/${digits}?text=${encodeURIComponent(lines)}`;
+    if (typeof openWhatsAppLink === 'function') openWhatsAppLink(url);
+    else window.open(url, '_blank', 'noopener,noreferrer');
+    if (typeof logActivity === 'function') logActivity(`إرسال الوصل ${rec.no} عبر واتساب`);
   };
 
   function printHtml(html, paper) {

@@ -2279,17 +2279,10 @@
             renderPlayers();
             return;
           }
-          if (shouldSendActivation) {
-            const delivery = await sendPlayerActivationMessage(newPlayer, false);
-            if (delivery.photoFileId) newPlayer.telegramFileId = delivery.photoFileId;
-            newPlayer.activationSent = delivery.sentToPlayer;
-            savePlayersToStorage();
-            const message = delivery.sentToPlayer
-              ? `تم تسجيل "${newPlayer.name}" وإرسال التفعيل له على التليكرام ✅`
-              : delivery.sentToCaptain
-                ? `تم تسجيل "${newPlayer.name}"؛ أُرسل رابط التفعيل للكابتن، واللاعب يحتاج ربط التليكرام أولاً.`
-                : `تم تسجيل "${newPlayer.name}"، لكن تعذر إرسال التليكرام؛ تحقق من إعدادات البوت.`;
-            showToast(message, delivery.sentToPlayer ? 'success' : 'warning');
+          const intlPhone = formatIraqiPhone(newPlayer.phone);
+          if (/^9647\d{9}$/.test(intlPhone)) {
+            openWhatsAppLink(generateWhatsAppLink(newPlayer));
+            showToast(`تم تسجيل "${newPlayer.name}" وفتح واتساب لإرسال تفاصيل الاشتراك ✅`, 'success');
           } else {
             showToast(`تم تسجيل وحفظ البطل "${newPlayer.name}" بنجاح 💪`, 'success');
           }
@@ -2405,19 +2398,12 @@
       savePlayersToStorage();
       closeRenewModal();
       logActivity(`تجديد اشتراك اللاعب: ${players[idx].name} لغاية ${endDate}`);
-      if (window.__skipRenewTelegramOnce) {
-        showToast(`تم تجديد وحفظ اشتراك البطل "${players[idx].name}" لغاية ${endDate} ✅`, 'success');
+      const intlRenewPhone = formatIraqiPhone(players[idx].phone);
+      if (/^9647\d{9}$/.test(intlRenewPhone)) {
+        openWhatsAppLink(generateWhatsAppLink(players[idx]));
+        showToast(`تم تجديد اشتراك "${players[idx].name}" لغاية ${endDate} وفتح واتساب ✅`, 'success');
       } else {
-        const delivery = await sendPlayerActivationMessage(players[idx], true);
-        if (delivery.photoFileId) players[idx].telegramFileId = delivery.photoFileId;
-        players[idx].activationSent = delivery.sentToPlayer;
-        savePlayersToStorage();
-        const message = delivery.sentToPlayer
-          ? `تم تجديد اشتراك "${players[idx].name}" وإرسال التفعيل له على التليكرام ✅`
-          : delivery.sentToCaptain
-            ? `تم تجديد الاشتراك؛ أُرسل رابط التفعيل للكابتن، واللاعب يحتاج ربط التليكرام أولاً.`
-            : `تم تجديد الاشتراك، لكن تعذر إرسال التليكرام؛ تحقق من إعدادات البوت.`;
-        showToast(message, delivery.sentToPlayer ? 'success' : 'warning');
+        showToast(`تم تجديد وحفظ اشتراك البطل "${players[idx].name}" لغاية ${endDate} ✅`, 'success');
       }
     }
 
@@ -3112,40 +3098,17 @@
 
     function notifyPlayerAboutDebt(player, action, description, amount) {
       const intlPhone = formatIraqiPhone(player.phone);
-      const linkedChatId = player.playerChatId || telegramDirectory?.phoneToChatId?.[intlPhone]?.chatId || '';
-      const { botToken } = getTelegramSettings();
-      const message = [
-        `مرحباً كابتن <b>${escapeTelegramHtml(player.name)}</b>،`,
-        `تم ${action === 'payment' ? 'استلام دفعة من الدين' : 'إضافة مشتريات على الحساب'} في <b>${escapeTelegramHtml(gymProfile.gymName)}</b>.`,
-        `📦 التفاصيل: ${escapeTelegramHtml(description)}`,
-        `💵 المبلغ: ${Number(amount).toLocaleString('en-US')} د.ع`,
-        `⚠️ الرصيد المتبقي: ${Number(player.debtAmount || 0).toLocaleString('en-US')} د.ع`,
-        `🆔 رقم العضوية: <code>${escapeTelegramHtml(player.code)}</code>`
-      ].join('\n');
-
-      if (linkedChatId && botToken) {
-        player.playerChatId = String(linkedChatId);
-        sendDirectTelegramMessageToPlayer(player, message).then(sent => {
-          if (sent) {
-            showToast(`تم إرسال إشعار الحساب إلى Telegram للاعب ${player.name}.`, 'success');
-          } else {
-            showToast(`تعذر إرسال Telegram إلى ${player.name}. لم يتم تأكيد الإرسال؛ استخدم WhatsApp يدوياً.`, 'warning');
-          }
-        });
-        return;
-      }
-
       if (/^9647\d{9}$/.test(intlPhone)) {
-        const whatsappText = `السلام عليكم ${player.name}، تم ${action === 'payment' ? 'تسجيل تسديد' : 'تسجيل دين'} في ${gymProfile.gymName}.\nالتفاصيل: ${description}\nالمبلغ: ${Number(amount).toLocaleString('en-US')} د.ع\nالرصيد المتبقي: ${Number(player.debtAmount || 0).toLocaleString('en-US')} د.ع\nرقم العضوية: ${player.code}`;
+        const whatsappText = `السلام عليكم كابتن ${player.name}، تم ${action === 'payment' ? 'تسجيل تسديد دين' : 'تسجيل مشتريات/دين'} في ${gymProfile.gymName}.\n📦 التفاصيل: ${description}\n💵 المبلغ: ${Number(amount).toLocaleString('en-US')} د.ع\n⚠️ الرصيد المتبقي: ${Number(player.debtAmount || 0).toLocaleString('en-US')} د.ع\n🆔 رقم العضوية: ${player.code}`;
         const whatsappUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(whatsappText)}`;
         const openedInNewTab = openWhatsAppLink(whatsappUrl);
         showToast(openedInNewTab
-          ? `لا يوجد Telegram مربوط للاعب ${player.name}؛ فُتح WhatsApp برسالة جاهزة. تحقق من إمكانية التواصل عبر الرقم.`
-          : `لا يوجد Telegram مربوط للاعب ${player.name}؛ جارٍ فتح WhatsApp في الصفحة الحالية.`, 'warning');
+          ? `فُتح WhatsApp لإرسال إشعار ${action === 'payment' ? 'التسديد' : 'الدين'} إلى ${player.name} ✅`
+          : `جارٍ فتح WhatsApp لإشعار ${player.name}...`, 'success');
         return;
       }
 
-      showToast(`لم يصل إشعار إلى ${player.name}: لا يوجد Telegram مربوط ولا رقم صالح لـ WhatsApp.`, 'warning');
+      showToast(`لم يتم فتح واتساب لـ ${player.name}: رقم الهاتف غير صالح.`, 'warning');
     }
 
     async function sendPlayerDebtReminderById(playerId, channel) {
