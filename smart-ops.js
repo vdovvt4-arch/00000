@@ -342,14 +342,18 @@
     const attIds = new Set(attendance.filter(a => a.date === day && a.type === 'in').map(a => String(a.playerId)));
     list.forEach(p => { if (p.lastCheckIn === day) attIds.add(String(p.id)); });
 
-    const newPlayers = list.filter(p => String(p.createdAt || '').slice(0, 10) === day);
-    const newIncome = newPlayers.reduce((s, p) => s + (Number(p.paidAmount) || 0), 0);
     const renewals = (ledger.renewals || []).filter(r => r.date === day);
     const renewIncome = renewals.reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
     const tx = (ledger.transactions || []).filter(t => (t.date || String(t.createdAt || '').slice(0, 10)) === day);
     const otherIncome = tx.filter(t => t.type === 'income' || !t.type).reduce((s, t) => s + (Number(t.amount) || 0), 0);
     const expense = tx.filter(t => t.type === 'expense').reduce((s, t) => s + (Number(t.amount) || 0), 0);
-    const debtPaid = (ledger.debtPayments || []).filter(d => (d.date || String(d.createdAt || '').slice(0, 10)) === day).reduce((s, d) => s + (Number(d.amount) || 0), 0);
+    const debtRows = (ledger.debtPayments || []).filter(d => (d.date || String(d.createdAt || '').slice(0, 10)) === day);
+    const debtPaid = debtRows.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+    const sameDayExtraByPlayer = {};
+    debtRows.forEach(d => { sameDayExtraByPlayer[d.playerId] = (sameDayExtraByPlayer[d.playerId] || 0) + (Number(d.amount) || 0); });
+    renewals.forEach(r => { sameDayExtraByPlayer[r.playerId] = (sameDayExtraByPlayer[r.playerId] || 0) + (Number(r.paidAmount) || 0); });
+    const newPlayers = list.filter(p => String(p.createdAt || '').slice(0, 10) === day);
+    const newIncome = newPlayers.reduce((s, p) => s + Math.max(0, (Number(p.paidAmount) || 0) - (sameDayExtraByPlayer[p.id] || 0)), 0);
     const totalDebt = list.reduce((s, p) => s + (Number(p.debtAmount) || 0), 0);
     const salesToday = sales.filter(s => s.date === day).reduce((s, x) => s + (Number(x.total) || 0), 0);
     const q = buildQueues();

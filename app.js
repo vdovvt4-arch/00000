@@ -2380,7 +2380,7 @@
       players[idx].startDate = startDate;
       players[idx].durationMonths = durationMonths;
       players[idx].endDate = endDate;
-      players[idx].paidAmount = paidAmount;
+      players[idx].paidAmount = (Number(players[idx].paidAmount) || 0) + paidAmount;
       // الدين السابق لا يُمسح عند التجديد؛ يُضاف الدين الجديد فوقه
       players[idx].debtAmount = (Number(players[idx].debtAmount) || 0) + debtAmount;
       // تصفير عداد إشعارات الـ 3 أيام للدورة الجديدة

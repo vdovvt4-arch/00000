@@ -24,12 +24,14 @@
     'pg_freezes_v1',
     'pg_wa_templates_v1',
     'pg_ops_settings_v1',
-    'pg_gym_status_reports_v1'
+    'pg_gym_status_reports_v1',
+    'pg_accounting_archives_v1'
   ];
 
   const ARRAY_MERGE_KEYS = new Set([
     'pg_freezes_v1',
     'pg_gym_status_reports_v1',
+    'pg_accounting_archives_v1',
     'power_gym_players_v1',
     'power_gym_audit_v1',
     'pg_attendance_v1',
@@ -422,6 +424,7 @@
     // إظهار/إخفاء عناصر الكابتن فقط للمشرف
     const restrictedSelectors = [
       'button[onclick*="openFinanceModal(\'profits\'"]',
+      'button[onclick*="openSmartAccountingModal"]',
       'button[onclick*="pgDailyClose"]',
       'button[onclick*="openSettingsModal"]'
     ];

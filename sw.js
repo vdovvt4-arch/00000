@@ -1,7 +1,7 @@
 // Service Worker - Power Gym (نسخة الويب/الهاتف PWA)
 // - ملفات التطبيق: الشبكة أولاً ثم النسخة المخزنة (لتصل التحديثات ويعمل بدون إنترنت)
 // - ملفات الـ CDN (Tailwind / الخطوط / الأيقونات): من الذاكرة أولاً مع تحديث بالخلفية
-const CACHE_NAME = 'power-gym-web-v40';
+const CACHE_NAME = 'power-gym-web-v43';
 const LOCAL_ASSETS = [
   './',
   './index.html',
@@ -23,6 +23,8 @@ const LOCAL_ASSETS = [
   './smart-ops.js',
   './store-admin.js',
   './ambient-music.js',
+  './smart-accounting.js',
+  './smart-notifications.js',
   './store.html',
   './store.js',
   './manifest.json',
