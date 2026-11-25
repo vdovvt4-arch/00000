@@ -26,6 +26,22 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* شعار خلفي باهت في منتصف الشاشة */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("./bg-watermark.png") !important;
+  background-repeat: no-repeat !important;
+  background-position: center center !important;
+  background-size: min(540px, 78vw) auto !important;
+  opacity: 0.085 !important;
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+}
+
 /* شريط تمرير مخصص أنيق */
 ::-webkit-scrollbar { width: 7px; height: 7px; }
 ::-webkit-scrollbar-track { background: #030712; }

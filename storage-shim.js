@@ -175,6 +175,7 @@
         var keys = keysReq.result || [];
         var vals = valsReq.result || [];
         var restoredAny = false;
+        var restoredKeys = [];
 
         for (var i = 0; i < keys.length; i++) {
           var k = String(keys[i]);
@@ -187,6 +188,7 @@
                 try { rawLS.setItem(k, v); } catch (e) { /* ignore */ }
               }
               restoredAny = true;
+              restoredKeys.push(k);
             }
           }
         }
@@ -203,6 +205,10 @@
         if (restoredAny && typeof window.reloadPowerGymStateFromPhoneDB === 'function') {
           window.reloadPowerGymStateFromPhoneDB();
         }
+        window.__pgPhoneDbReady = true;
+        try {
+          window.dispatchEvent(new CustomEvent('pg-phonedb-restored', { detail: { restoredAny: restoredAny, restoredKeys: restoredKeys } }));
+        } catch (e) { /* ignore */ }
       };
     } catch (e) { /* ignore */ }
   });

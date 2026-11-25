@@ -23,11 +23,13 @@
     'pg_crowd_status_v1',
     'pg_freezes_v1',
     'pg_wa_templates_v1',
-    'pg_ops_settings_v1'
+    'pg_ops_settings_v1',
+    'pg_gym_status_reports_v1'
   ];
 
   const ARRAY_MERGE_KEYS = new Set([
     'pg_freezes_v1',
+    'pg_gym_status_reports_v1',
     'power_gym_players_v1',
     'power_gym_audit_v1',
     'pg_attendance_v1',
@@ -431,9 +433,9 @@
 
     const badge = document.getElementById('pgRoleChip');
     if (badge) {
-      badge.textContent = isSup ? `مشرف: ${roleInfo.supervisorName}` : 'وضع الكابتن (مدير)';
+      badge.textContent = isSup ? `كابتن مشرف: ${roleInfo.supervisorName}` : 'كابتن مدير';
       badge.className = isSup
-        ? 'inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/15 px-2.5 py-0.5 text-[10px] font-bold text-sky-300'
+        ? 'inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300'
         : 'inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/15 px-2.5 py-0.5 text-[10px] font-bold text-sky-300';
     }
   }
@@ -655,17 +657,32 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
     if (changed) window.history.replaceState({}, '', window.location.pathname);
   }
 
-  // أول تشغيل بعد التحديث (للكابتن والمشرفين): دمج ورفع كل البيانات المحفوظة محلياً للسحابة تلقائياً
-  function autoInitialMigration() {
-    const FLAG = 'pg_initial_sync_v2';
-    if (rawLS.getItem(FLAG) === '1') return;
+  // أول تشغيل بعد التحديث (للكابتن والمشرفين): دمج ورفع كل البيانات المحفوظة في ذاكرة التلفون للسحابة تلقائياً
+  function autoInitialMigration(extraKeys) {
+    const FLAG = 'pg_initial_sync_v3';
+    const hasExtra = Array.isArray(extraKeys) && extraKeys.length > 0;
+    if (!hasExtra && rawLS.getItem(FLAG) === '1') return;
     const dirty = getDirtySet();
+    let added = 0;
     SYNCED_KEYS.forEach(k => {
       const v = rawLS.getItem(k);
-      if (v && v !== '[]' && v !== '{}' && v !== 'null') dirty.add(k);
+      if (v && v !== '[]' && v !== '{}' && v !== 'null') {
+        if (!dirty.has(k)) added++;
+        dirty.add(k);
+      }
     });
+    if (hasExtra) {
+      extraKeys.forEach(k => {
+        if (SYNCED_KEYS.includes(k)) {
+          dirty.add(k);
+          added++;
+        }
+      });
+    }
     setDirtySet(dirty);
-    rawLS.setItem(FLAG, '1');
+    if (window.__pgPhoneDbReady || added > 0) {
+      rawLS.setItem(FLAG, '1');
+    }
   }
 
   function injectCloudUi() {
@@ -691,6 +708,16 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
       if (last) last.appendChild(inv);
     }
 
+    if (nav && !document.getElementById('pgRoleSwitchNavBtn')) {
+      const swBtn = document.createElement('button');
+      swBtn.id = 'pgRoleSwitchNavBtn';
+      swBtn.className = 'sidebar-link';
+      swBtn.onclick = () => { window.pgSwitchRoleQuick(); if (typeof closeMobileMenu === 'function') closeMobileMenu(); };
+      swBtn.innerHTML = '<i class="fa-solid fa-user-shield text-cyan-400"></i><span>تبديل (مدير / مشرف)</span>';
+      const last = Array.from(nav.querySelectorAll('section')).pop();
+      if (last) last.appendChild(swBtn);
+    }
+
     const headerTitle = document.querySelector('#desktopSidebar .border-b');
     if (headerTitle && !document.getElementById('pgCloudStatusBadge')) {
       const bar = document.createElement('div');
@@ -708,25 +735,95 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
 
   window.pgSwitchRoleQuick = function () {
     const info = getRoleInfo();
-    if (info.role === 'supervisor') {
-      const entered = prompt('للرجوع إلى وضع الكابتن (المدير)، أدخل رمز الكابتن:');
-      if (entered === null) return;
-      const clean = entered.trim();
-      const validPin = info.captainPin && clean === info.captainPin;
-      const validDev = clean === DEV_CODE;
-      if (!validPin && !validDev) {
-        showToast?.('الرمز غير صحيح', 'error');
-        return;
-      }
-      saveRoleInfo({ role: 'captain', supervisorName: 'الكابتن', captainPin: info.captainPin });
-      showToast?.('تمت استعادة وضع الكابتن (المدير) بنجاح ✅', 'success');
+    const isSup = info.role === 'supervisor';
+    const hasPin = Boolean(info.captainPin);
+    const old = document.getElementById('pgRoleSwitchModal');
+    if (old) old.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'pgRoleSwitchModal';
+    modal.className = 'fixed inset-0 z-[95] modal-backdrop flex items-center justify-center p-4';
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    modal.innerHTML = `
+      <section class="card-bg w-full max-w-md rounded-3xl p-5 space-y-4 border border-cyan-500/30">
+        <header class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-base font-black text-white flex items-center gap-2">
+              <i class="fa-solid fa-user-shield text-cyan-400"></i> تبديل الصلاحية (مدير / مشرف)
+            </h3>
+            <p class="text-[11px] text-slate-400 mt-0.5">الحالة الحالية: <strong class="${isSup ? 'text-emerald-400' : 'text-sky-300'}">${isSup ? 'كابتن مشرف' : 'كابتن مدير'}</strong></p>
+          </div>
+          <button onclick="document.getElementById('pgRoleSwitchModal').remove()" class="rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-200">✕</button>
+        </header>
+
+        <div class="space-y-3">
+          ${isSup ? '' : `
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">اسم المشرف عند التحويل</label>
+              <input id="pgRoleNameInput" value="${(info.supervisorName === 'الكابتن' ? 'مشرف' : info.supervisorName).replace(/"/g, '&quot;')}" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" />
+            </div>
+          `}
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">
+              ${isSup ? 'أدخل الرمز الخاص للرجوع إلى كابتن مدير' : (hasPin ? 'أدخل الرمز الخاص لتأكيد التحويل إلى كابتن مشرف' : 'أنشئ رمزاً خاصاً (4 خانات على الأقل) لحماية التبديل')}
+            </label>
+            <input id="pgRolePinInput" type="password" dir="ltr" placeholder="****" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white" />
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 pt-1">
+          ${isSup ? `
+            <button onclick="pgConfirmRoleSwitch('captain')" class="flex-1 gold-gradient rounded-xl py-2.5 text-xs font-black">تحويل إلى كابتن مدير</button>
+          ` : `
+            <button onclick="pgConfirmRoleSwitch('supervisor')" class="flex-1 gold-gradient rounded-xl py-2.5 text-xs font-black">تحويل إلى كابتن مشرف</button>
+            ${hasPin ? `<button onclick="pgUpdateCaptainPinOnly()" class="rounded-xl bg-slate-800 px-3.5 py-2.5 text-xs font-bold text-sky-300">حفظ رمز جديد</button>` : ''}
+          `}
+        </div>
+      </section>
+    `;
+    document.body.appendChild(modal);
+  };
+
+  window.pgConfirmRoleSwitch = function (targetRole) {
+    const info = getRoleInfo();
+    const pin = (document.getElementById('pgRolePinInput')?.value || '').trim();
+    if (pin.length < 4) {
+      showToast?.('الرمز الخاص يجب أن يكون 4 خانات على الأقل', 'warning');
       return;
     }
 
-    const newPin = prompt('أنت الآن في وضع الكابتن (المدير).\nأدخل رمز الكابتن لحفظه (تحتاجه إذا تحولت لمشرف بالخطأ):', info.captainPin || '');
-    if (newPin === null) return;
-    saveRoleInfo({ role: 'captain', supervisorName: info.supervisorName || 'الكابتن', captainPin: newPin.trim() });
-    showToast?.('تم حفظ رمز الكابتن بنجاح ✓', 'success');
+    if (targetRole === 'captain') {
+      const valid = (info.captainPin && pin === info.captainPin) || pin === DEV_CODE;
+      if (!valid) {
+        showToast?.('الرمز الخاص غير صحيح', 'error');
+        return;
+      }
+      saveRoleInfo({ role: 'captain', supervisorName: 'الكابتن', captainPin: info.captainPin || pin });
+      document.getElementById('pgRoleSwitchModal')?.remove();
+      showToast?.('تم التحويل إلى كابتن مدير بنجاح ✅', 'success');
+      return;
+    }
+
+    if (info.captainPin && pin !== info.captainPin && pin !== DEV_CODE) {
+      showToast?.('الرمز الخاص غير صحيح', 'error');
+      return;
+    }
+    const supName = (document.getElementById('pgRoleNameInput')?.value || '').trim() || 'مشرف';
+    saveRoleInfo({ role: 'supervisor', supervisorName: supName, captainPin: info.captainPin || pin });
+    document.getElementById('pgRoleSwitchModal')?.remove();
+    showToast?.('تم التحويل إلى كابتن مشرف بنجاح ✓', 'success');
+  };
+
+  window.pgUpdateCaptainPinOnly = function () {
+    const info = getRoleInfo();
+    const pin = (document.getElementById('pgRolePinInput')?.value || '').trim();
+    if (pin.length < 4) {
+      showToast?.('أدخل رمزاً من 4 خانات على الأقل', 'warning');
+      return;
+    }
+    saveRoleInfo({ role: 'captain', supervisorName: info.supervisorName || 'الكابتن', captainPin: pin });
+    document.getElementById('pgRoleSwitchModal')?.remove();
+    showToast?.('تم تحديث الرمز الخاص بنجاح ✓', 'success');
   };
 
   window.pgCloudSyncNow = () => syncNow(true);
@@ -747,6 +844,11 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
     autoInitialMigration();
     injectCloudUi();
 
+    window.addEventListener('pg-phonedb-restored', ev => {
+      const restoredKeys = (ev && ev.detail && ev.detail.restoredKeys) || [];
+      autoInitialMigration(restoredKeys);
+      if (isConfigured(getConfig())) syncNow(false);
+    });
     window.addEventListener('online', () => {
       updateSyncBadge();
       syncNow(false);

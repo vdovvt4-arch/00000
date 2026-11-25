@@ -951,7 +951,7 @@
       ending.forEach(p => {
         itemsHtml.push(`<div class="flex items-center justify-between bg-red-950/30 border border-red-500/30 px-3 py-1.5 rounded-xl">
           <span>🔴 <b>ينتهي اشتراك (شوكت يخلص):</b> ${escapeHtml(p.name)} (${escapeHtml(p.phone)})</span>
-          <button onclick="sendSinglePlayerAlertToTelegram('${sanitizeId(p.id)}')" class="bg-red-500/20 hover:bg-red-500/40 text-red-300 px-2 py-0.5 rounded-lg text-[11px] font-bold">إبلاغ بالتلي ✈️</button>
+          <button onclick="sendSubscriptionAlertById('${sanitizeId(p.id)}')" class="bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded-lg text-[11px] font-bold">إبلاغ واتساب</button>
         </div>`);
       });
 
@@ -1289,11 +1289,8 @@
                 </button>
               ` : ''}
               ${hasDebt ? `
-                <button type="button" onclick="sendPlayerDebtReminderById('${safeId}', 'whatsapp')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-black px-3 py-2 rounded-xl mt-3.5 transition" title="فتح تذكير الدين في واتساب لمراجعته وإرساله">
-                  <i class="fa-brands fa-whatsapp ml-1" aria-hidden="true"></i>تذكير واتساب
-                </button>
-                <button type="button" onclick="sendPlayerDebtReminderById('${safeId}', 'telegram')" class="bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 font-black px-3 py-2 rounded-xl mt-3.5 transition" title="إرسال تذكير الدين إلى حساب اللاعب المرتبط بالتليكرام">
-                  <i class="fa-brands fa-telegram ml-1" aria-hidden="true"></i>تذكير تليكرام
+                <button type="button" onclick="sendPlayerDebtReminderById('${safeId}', 'whatsapp')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-black px-3 py-2 rounded-xl mt-3.5 transition" title="إرسال تذكير الدين عبر واتساب">
+                  <i class="fa-brands fa-whatsapp ml-1" aria-hidden="true"></i>إشعار دين واتساب
                 </button>
               ` : ''}
               ${hasDebt ? `
@@ -1507,8 +1504,21 @@
 
     function generateWhatsAppLink(player) {
       const intlPhone = formatIraqiPhone(player.phone);
-      const message = `السلام عليكم كابتن ${player.name} الحبيب 💪🔥،\nتم تفعيل/تحديث بيانات اشتراكك في *${gymProfile.gymName}* (${gymProfile.gymBranch}).\n📅 تاريخ البدء: ${player.startDate}\n⏳ المدة: ${player.durationMonths} شهر\n🏁 تاريخ الانتهاء: ${player.endDate}\n\nنتمنى لك تمريناً موفقاً!`;
-      return `https://wa.me/${intlPhone}?text=${encodeURIComponent(message)}`;
+      const paid = Number(player.paidAmount) || 0;
+      const debt = Number(player.debtAmount) || 0;
+      const lines = [
+        `السلام عليكم كابتن ${player.name} الحبيب 💪🔥`,
+        `تم تسجيل/تحديث اشتراكك في *${gymProfile.gymName}* (${gymProfile.gymBranch})`,
+        `🆔 رقم العضوية: ${player.code || '-'}`,
+        `🏋️ القسم: ${player.planType || 'حديد وكارديو'}`,
+        `📅 تاريخ البدء: ${player.startDate}`,
+        `⏳ المدة: ${player.durationMonths} شهر`,
+        `🏁 تاريخ الانتهاء: ${player.endDate}`,
+        `💵 المبلغ المدفوع: ${paid.toLocaleString('en-US')} د.ع`,
+        debt > 0 ? `⚠️ المبلغ المتبقي (الدين): *${debt.toLocaleString('en-US')} د.ع*` : '',
+        `\nنتمنى لك تمريناً موفقاً!`
+      ].filter(Boolean).join('\n');
+      return `https://wa.me/${intlPhone}?text=${encodeURIComponent(lines)}`;
     }
 
     function openWhatsAppLink(url) {
@@ -2072,7 +2082,7 @@
       document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-user-plus text-sky-500"></i><span>إضافة لاعب جديد</span>`;
       document.getElementById('saveBtn').textContent = COACH_MODE
         ? 'حفظ التسجيل على هذا الهاتف'
-        : 'حفظ وإرسال رسالة التفعيل للتليكرام';
+        : 'حفظ وإشعار واتساب';
       document.getElementById('playerForm').reset();
 
       compressedPhotoDataUrl = '';
@@ -2100,7 +2110,7 @@
 
       document.getElementById('editingPlayerId').value = player.id;
       document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-user-pen text-sky-500"></i><span>تعديل بيانات اللاعب</span>`;
-      document.getElementById('saveBtn').textContent = 'حفظ التعديلات وإرسال التفعيل';
+      document.getElementById('saveBtn').textContent = 'حفظ التعديلات وإشعار واتساب';
 
       document.getElementById('playerName').value = player.name;
       document.getElementById('playerAge').value = player.age;
@@ -2229,17 +2239,12 @@
               renderPlayers();
               return;
             }
-            if (shouldSendActivation) {
-              const delivery = await sendPlayerActivationMessage(updatedPlayer, true);
-              if (delivery.photoFileId) updatedPlayer.telegramFileId = delivery.photoFileId;
-              updatedPlayer.activationSent = delivery.sentToPlayer;
-              savePlayersToStorage();
-              const message = delivery.sentToPlayer
-                ? `تم تحديث بيانات البطل "${updatedPlayer.name}" وإرسال التفعيل له على التليكرام ✅`
-                : delivery.sentToCaptain
-                  ? `تم تحديث بيانات "${updatedPlayer.name}"؛ أُرسل رابط التفعيل للكابتن، واللاعب يحتاج ربط التليكرام أولاً.`
-                  : `تم تحديث بيانات "${updatedPlayer.name}"، لكن تعذر إرسال التليكرام؛ تحقق من إعدادات البوت.`;
-              showToast(message, delivery.sentToPlayer ? 'success' : 'warning');
+            const skipWaEdit = Boolean(window.__pgSkipSaveWhatsAppOnce);
+            window.__pgSkipSaveWhatsAppOnce = false;
+            const intlEditPhone = formatIraqiPhone(updatedPlayer.phone);
+            if (!skipWaEdit && /^9647\d{9}$/.test(intlEditPhone)) {
+              openWhatsAppLink(generateWhatsAppLink(updatedPlayer));
+              showToast(`تم حفظ تعديلات "${updatedPlayer.name}" وفتح واتساب لإشعاره ✅`, 'success');
             } else {
               showToast(`تم حفظ تعديلات البطل "${updatedPlayer.name}" بنجاح ✅`, 'success');
             }
@@ -2279,8 +2284,10 @@
             renderPlayers();
             return;
           }
+          const skipWaNew = Boolean(window.__pgSkipSaveWhatsAppOnce);
+          window.__pgSkipSaveWhatsAppOnce = false;
           const intlPhone = formatIraqiPhone(newPlayer.phone);
-          if (/^9647\d{9}$/.test(intlPhone)) {
+          if (!skipWaNew && /^9647\d{9}$/.test(intlPhone)) {
             openWhatsAppLink(generateWhatsAppLink(newPlayer));
             showToast(`تم تسجيل "${newPlayer.name}" وفتح واتساب لإرسال تفاصيل الاشتراك ✅`, 'success');
           } else {
@@ -2431,9 +2438,12 @@
       document.getElementById('idCardModal').classList.add('hidden');
     }
 
+    let currentCoursePlayerId = '';
+
     function openPlayerCourseModal(playerId) {
       const player = players.find(item => item.id === playerId);
       if (!player) return;
+      currentCoursePlayerId = player.id;
       const images = Array.isArray(player.courseImages)
         ? player.courseImages.map(sanitizeCourseImage).filter(Boolean).slice(0, 5)
         : [];
@@ -2458,6 +2468,64 @@
     function printPlayerCourse() {
       document.body.dataset.printMode = 'course';
       window.print();
+    }
+
+    async function sendPlayerCourseWhatsApp() {
+      const player = players.find(item => item.id === currentCoursePlayerId);
+      if (!player) return;
+      const images = Array.isArray(player.courseImages)
+        ? player.courseImages.map(sanitizeCourseImage).filter(Boolean).slice(0, 5)
+        : [];
+      const text = [
+        `🏋️ *ملف كورس اللاعب — ${gymProfile.gymName}*`,
+        `👤 اللاعب: *${player.name}* (${player.code || '-'})`,
+        player.courseNotes ? `📋 *تفاصيل الكورس:*\n${player.courseNotes}` : '📸 صور الكورس مرفقة'
+      ].filter(Boolean).join('\n');
+
+      // على الموبايل (آيفون / أندرويد): مشاركة الصور والنص مباشرة إلى تطبيق واتساب
+      if (images.length && navigator.share && navigator.canShare) {
+        try {
+          const files = await Promise.all(images.map(async (dataUrl, i) => {
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            return new File([blob], `course_${player.code || 'pg'}_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
+          }));
+          if (navigator.canShare({ files })) {
+            await navigator.share({ title: `كورس ${player.name}`, text, files });
+            logActivity(`مشاركة صور كورس اللاعب ${player.name} عبر واتساب`);
+            showToast('تمت مشاركة ملف الكورس بنجاح ✅', 'success');
+            return;
+          }
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+        }
+      }
+
+      // البديل على الكمبيوتر: تنزيل الصور تلقائياً + فتح محادثة واتساب اللاعب مباشرة
+      if (images.length) {
+        images.forEach((dataUrl, i) => {
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          a.download = `course_${player.code || 'pg'}_${i + 1}.jpg`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        });
+      }
+
+      const intlPhone = formatIraqiPhone(player.phone);
+      if (/^9647\d{9}$/.test(intlPhone)) {
+        openWhatsAppLink(`https://wa.me/${intlPhone}?text=${encodeURIComponent(text)}`);
+        logActivity(`إرسال كورس اللاعب ${player.name} عبر واتساب`);
+        showToast(
+          images.length
+            ? 'تم تنزيل صور الكورس وفتح واتساب اللاعب — أرفق الصور في المحادثة وأرسلها ✓'
+            : 'تم فتح واتساب اللاعب بتفاصيل الكورس ✓',
+          'success'
+        );
+      } else {
+        showToast('تم تنزيل صور الكورس، لكن رقم هاتف اللاعب غير صالح لفتح واتساب', 'warning');
+      }
     }
 
     window.addEventListener('afterprint', () => {
@@ -2759,8 +2827,8 @@
               ${avatarSrc === DEFAULT_AVATAR
                 ? initialsAvatarHtml(player.name, 'pg-avatar--card')
                 : `<img src="${avatarSrc}" alt="${escapeHtml(player.name)}">`}
-              <span title="${hasTelegramLinked ? 'مربوط بتليكرام اللاعب مباشرة' : 'تم الإرسال لسحابة التليكرام'}" class="w-6 h-6 rounded-full ${hasTelegramLinked ? 'bg-emerald-500' : 'bg-blue-500'} text-white text-[11px] flex items-center justify-center absolute bottom-0 right-0 border-2 border-slate-950 shadow">
-                <i class="fa-brands fa-telegram"></i>
+              <span title="جاهز لإشعارات الواتساب" class="w-6 h-6 rounded-full bg-emerald-500 text-white text-[11px] flex items-center justify-center absolute bottom-0 right-0 border-2 border-slate-950 shadow">
+                <i class="fa-brands fa-whatsapp"></i>
               </span>
             </div>
 
@@ -2822,9 +2890,9 @@
 
               <!-- أزرار البطاقة (.card__btn / .card__btn-solid) -->
               <div class="pt-2.5 border-t border-slate-800/80 flex items-center justify-center gap-1.5 flex-wrap">
-                <button onclick="${player.activationSent ? 'sendSubscriptionAlertById' : 'sendPlayerActivationMessageById'}('${safeId}')" class="card__btn card__btn-solid flex-1" title="${player.activationSent ? 'إرسال تنبيه حالة الاشتراك للاعب على التليكرام' : 'إرسال رسالة تفعيل الاشتراك للاعب على التليكرام'}">
-                  <i class="fa-brands fa-telegram text-sm"></i>
-                  <span>${player.activationSent ? 'تنبيه تلي' : 'تفعيل تلي'}</span>
+                <button onclick="sendSubscriptionAlertById('${safeId}')" class="card__btn card__btn-solid flex-1" title="إرسال إشعار تفاصيل وحالة الاشتراك عبر واتساب">
+                  <i class="fa-brands fa-whatsapp text-sm"></i>
+                  <span>إشعار واتساب</span>
                 </button>
 
                 <button onclick="openRenewModal('${safeId}')" class="card__btn" title="تجديد الاشتراك">
@@ -2893,7 +2961,7 @@
             </td>
             <td class="p-3">
               <div class="flex items-center justify-center gap-1.5">
-                <button onclick="${player.activationSent ? 'sendSubscriptionAlertById' : 'sendPlayerActivationMessageById'}('${safeId}')" class="${player.activationSent ? 'bg-sky-600' : 'bg-blue-600'} text-white p-2 rounded-lg" title="${player.activationSent ? 'إرسال تنبيه اشتراك' : 'إرسال رسالة تفعيل للتلي'}"><i class="fa-brands fa-telegram"></i></button>
+                <button onclick="sendSubscriptionAlertById('${safeId}')" class="bg-emerald-600 text-white p-2 rounded-lg" title="إرسال إشعار اشتراك عبر واتساب"><i class="fa-brands fa-whatsapp"></i></button>
                 <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 text-white p-2 rounded-lg" title="التواصل مع ${escapeHtml(player.name)} عبر واتساب" aria-label="واتساب ${escapeHtml(player.name)}"><i class="fa-brands fa-whatsapp"></i></a>
                 <button type="button" onclick="openRenewModal('${safeId}')" class="bg-sky-500/20 text-sky-400 p-2 rounded-lg" title="تجديد الاشتراك" aria-label="تجديد اشتراك ${escapeHtml(player.name)}"><i class="fa-solid fa-arrows-rotate"></i></button>
                 <button type="button" onclick="openIdCardModal('${safeId}')" class="bg-purple-500/20 text-purple-400 p-2 rounded-lg" title="عرض بطاقة العضوية" aria-label="عرض بطاقة عضوية ${escapeHtml(player.name)}"><i class="fa-solid fa-id-card"></i></button>
@@ -3260,27 +3328,7 @@
     }
 
     async function sendPlayerActivationMessageById(playerId) {
-      const player = players.find(p => p.id === playerId);
-      if (!player) return;
-      showToast(`جاري إرسال رسالة تفعيل الاشتراك للبطل "${player.name}" على التليكرام... 📲`, 'info');
-      await pollBotUpdatesForPlayers(true);
-      if (player.activationSent) {
-        showToast(`تم إرسال رسالة التفعيل للاعب "${player.name}" عند ربط رقمه بالتليكرام.`, 'success');
-        return;
-      }
-      const delivery = await sendPlayerActivationMessage(player, false);
-      if (delivery.photoFileId) player.telegramFileId = delivery.photoFileId;
-      player.activationSent = delivery.sentToPlayer;
-      savePlayersToStorage();
-      if (delivery.sentToPlayer) {
-        logActivity(`إرسال رسالة تفعيل التليكرام للاعب: ${player.name}`);
-        showToast(`تم إرسال رسالة التفعيل للاعب "${player.name}" عبر التليكرام ✅`, 'success');
-      } else if (delivery.sentToCaptain) {
-        logActivity(`إرسال رابط تفعيل للاعب إلى الكابتن: ${player.name}`);
-        showToast(`أُرسل رابط التفعيل للكابتن؛ على اللاعب بدء البوت ومشاركة رقمه حتى تصله الرسائل مباشرة.`, 'warning');
-      } else {
-        showToast('تعذر إرسال رسالة التفعيل؛ تحقق من توكن البوت ومعرف الكابتن والاتصال.', 'error');
-      }
+      return sendSubscriptionAlertById(playerId);
     }
 
     // نص تنبيه حالة الاشتراك (يُرسل للاعب المفعَّل مسبقاً) - تليكرام HTML
@@ -3332,18 +3380,14 @@
     async function sendSubscriptionAlertById(playerId) {
       const player = players.find(p => p.id === playerId);
       if (!player) return;
-      showToast(`جاري إرسال تنبيه الاشتراك إلى "${player.name}"... 🔔`, 'info');
-      await pollBotUpdatesForPlayers(true);
-      const sent = await sendDirectTelegramMessageToPlayer(player, buildSubscriptionAlertText(player));
-      if (sent) {
-        logActivity(`إرسال تنبيه اشتراك عبر التليكرام للاعب: ${player.name}`);
-        showToast(`تم إرسال تنبيه الاشتراك للبطل "${player.name}" عبر بوت التليكرام ✅`, 'success');
+      const intlPhone = formatIraqiPhone(player.phone);
+      if (!/^9647\d{9}$/.test(intlPhone)) {
+        showToast(`رقم هاتف ${player.name} غير صالح لإرسال إشعار واتساب`, 'warning');
         return;
       }
-      if (confirm(`تعذر الإرسال عبر التليكرام (اللاعب غير مربوط بالبوت أو لا يوجد اتصال).\nهل تريد إرسال التنبيه لـ "${player.name}" عبر واتساب؟`)) {
-        logActivity(`إرسال تنبيه اشتراك عبر واتساب للاعب: ${player.name}`);
-        openWhatsAppLink(generateWhatsAppAlertLink(player));
-      }
+      logActivity(`إرسال إشعار اشتراك عبر واتساب للاعب: ${player.name}`);
+      openWhatsAppLink(generateWhatsAppAlertLink(player));
+      showToast(`تم فتح واتساب لإرسال الإشعار إلى "${player.name}" ✅`, 'success');
     }
 
     // =========================================================

@@ -1,4 +1,4 @@
-/* store.js — صفحة المتجر العامة للاعبين (عرض المنتجات + الحجز) */
+/* store.js — صفحة المتجر العامة للاعبين (تطبق كل تخصيصات المدير تلقائياً) */
 (function () {
   'use strict';
 
@@ -9,7 +9,6 @@
   const GYM = new URLSearchParams(location.search).get('g') || 'powergym-main';
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const money = n => Math.round(Number(n) || 0).toLocaleString('en-US') + ' د.ع';
 
   const ERRORS = {
     invalid_name: 'اكتب اسمك (حرفان على الأقل)',
@@ -21,10 +20,51 @@
 
   let products = [];
   let info = {};
+  let prefs = {
+    t: '',
+    c: '#0891b2',
+    bg: 'light',
+    open: 1,
+    so: 1,
+    nt: 1,
+    hr: '',
+    cur: 'د.ع',
+    cat: ''
+  };
+  let activeCategory = 'الكل';
   let current = null;
   let qty = 1;
 
   const headers = () => ({ apikey: CFG.key, 'Content-Type': 'application/json' });
+  const money = n => Math.round(Number(n) || 0).toLocaleString('en-US') + ' ' + (prefs.cur || 'د.ع');
+
+  function parsePrefs(rawNote) {
+    const s = String(rawNote || '').trim();
+    if (s.startsWith('{')) {
+      try {
+        const obj = JSON.parse(s);
+        prefs = Object.assign({}, prefs, obj);
+        return;
+      } catch { /* fallback to plain text */ }
+    }
+    prefs.t = s;
+  }
+
+  function parseProductCategory(desc) {
+    const m = String(desc || '').match(/^\[([^\]]{1,30})\]\s*\n?([\s\S]*)$/);
+    return m ? { cat: m[1].trim(), text: m[2].trim() } : { cat: '', text: String(desc || '').trim() };
+  }
+
+  function applyTheme() {
+    const root = document.documentElement;
+    if (prefs.c && /^#[0-9a-fA-F]{6}$/.test(prefs.c)) {
+      root.style.setProperty('--brand', prefs.c);
+      root.style.setProperty('--brand-dark', prefs.c);
+    }
+    document.body.classList.remove('theme-soft', 'theme-dark');
+    if (prefs.bg === 'soft') document.body.classList.add('theme-soft');
+    else if (prefs.bg === 'dark') document.body.classList.add('theme-dark');
+  }
 
   async function rpc(name, args) {
     const res = await fetch(`${CFG.url}/rest/v1/rpc/${name}`, { method: 'POST', headers: headers(), body: JSON.stringify(args) });
@@ -42,9 +82,32 @@
     return Math.round((Number(p.price) || 0) * (1 - d / 100));
   }
 
+  function renderCategories() {
+    const bar = $('catsBar');
+    if (!bar) return;
+    const fromPrefs = String(prefs.cat || '').split(',').map(x => x.trim()).filter(Boolean);
+    const fromProds = products.map(p => parseProductCategory(p.description).cat).filter(Boolean);
+    const cats = Array.from(new Set([...fromPrefs, ...fromProds]));
+    if (!cats.length) {
+      bar.style.display = 'none';
+      return;
+    }
+    bar.style.display = 'flex';
+    const all = ['الكل', ...cats];
+    bar.innerHTML = all.map(c => `
+      <button type="button" class="cat-pill ${activeCategory === c ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>
+    `).join('');
+  }
+
   function render() {
     const q = ($('search').value || '').trim().toLowerCase();
-    const list = products.filter(p => !q || (p.name || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q));
+    const list = products.filter(p => {
+      if (!prefs.so && !p.available) return false;
+      const parsed = parseProductCategory(p.description);
+      if (activeCategory !== 'الكل' && parsed.cat !== activeCategory) return false;
+      return !q || (p.name || '').toLowerCase().includes(q) || parsed.text.toLowerCase().includes(q);
+    });
+
     const grid = $('grid');
     const empty = $('empty');
     if (!list.length) {
@@ -54,24 +117,27 @@
       return;
     }
     empty.style.display = 'none';
+    const closed = Number(prefs.open) === 0;
     grid.innerHTML = list.map(p => {
       const d = Number(p.discount_percent) || 0;
       const sold = !p.available;
+      const parsed = parseProductCategory(p.description);
       return `
         <article class="card">
           <div class="thumb">
             ${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">` : '🛒'}
             ${d > 0 && !sold ? `<span class="badge">خصم ${Math.round(d)}%</span>` : ''}
+            ${parsed.cat ? `<span class="cat-tag">${esc(parsed.cat)}</span>` : ''}
             ${sold ? '<div class="soldout">نفدت الكمية</div>' : ''}
           </div>
           <div class="info">
             <h3 class="name">${esc(p.name)}</h3>
-            ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
+            ${parsed.text ? `<p class="desc">${esc(parsed.text)}</p>` : ''}
             <div class="price">
               <span class="now">${money(finalPrice(p))}</span>
               ${d > 0 ? `<span class="old">${money(p.price)}</span>` : ''}
             </div>
-            <button class="btn" ${sold ? 'disabled' : ''} data-id="${esc(p.id)}">${sold ? 'غير متوفر' : 'احجز الآن'}</button>
+            <button class="btn" ${(sold || closed) ? 'disabled' : ''} data-id="${esc(p.id)}">${closed ? 'الحجز متوقف مؤقتاً' : (sold ? 'غير متوفر' : 'احجز الآن')}</button>
           </div>
         </article>`;
     }).join('');
@@ -96,7 +162,7 @@
       <div class="field"><label>الكمية</label>
         <div class="qty"><button type="button" id="qMinus">−</button><span id="qVal">${qty}</span><button type="button" id="qPlus">+</button></div>
       </div>
-      <div class="field"><label for="cNote">ملاحظة (اختياري)</label><textarea id="cNote" rows="2" maxlength="300"></textarea></div>
+      ${Number(prefs.nt) !== 0 ? `<div class="field"><label for="cNote">ملاحظة (اختياري)</label><textarea id="cNote" rows="2" maxlength="300"></textarea></div>` : ''}
       <div class="row">
         <button class="btn ghost" id="cCancel" type="button">إلغاء</button>
         <button class="btn" id="cSend" type="button">تأكيد الحجز</button>
@@ -125,7 +191,7 @@
     try {
       await rpc('store_reserve', {
         p_gym: GYM, p_product_id: current.id, p_qty: qty,
-        p_name: name, p_phone: phone, p_note: $('cNote').value.trim()
+        p_name: name, p_phone: phone, p_note: ($('cNote')?.value || '').trim()
       });
       done(name);
     } catch (e) {
@@ -155,11 +221,18 @@
     try {
       info = (await rpc('store_get_info', { p_gym: GYM })) || {};
     } catch { info = {}; }
+    parsePrefs(info.note);
+    applyTheme();
     if (info.store_name) {
       $('storeTitle').textContent = info.store_name;
       document.title = info.store_name;
     }
-    $('storeNote').textContent = info.note || '';
+    const noteParts = [prefs.t, prefs.hr ? `🕒 ${prefs.hr}` : ''].filter(Boolean);
+    $('storeNote').textContent = noteParts.join(' · ');
+
+    if (Number(prefs.open) === 0 && $('closedBanner')) {
+      $('closedBanner').style.display = 'block';
+    }
 
     try {
       const res = await fetch(`${CFG.url}/rest/v1/store_products?gym_id=eq.${encodeURIComponent(GYM)}&select=*&order=sort_order.asc,updated_at.desc`, { headers: { apikey: CFG.key } });
@@ -172,13 +245,23 @@
       empty.textContent = 'تعذر تحميل المنتجات، تحقق من الاتصال وأعد المحاولة';
       return;
     }
+    renderCategories();
     render();
   }
 
   $('search').addEventListener('input', render);
+  if ($('catsBar')) {
+    $('catsBar').addEventListener('click', e => {
+      const b = e.target.closest('button[data-cat]');
+      if (!b) return;
+      activeCategory = b.dataset.cat;
+      renderCategories();
+      render();
+    });
+  }
   $('grid').addEventListener('click', e => {
     const b = e.target.closest('button[data-id]');
-    if (!b) return;
+    if (!b || b.disabled) return;
     const p = products.find(x => x.id === b.dataset.id);
     if (p && p.available) openSheet(p);
   });

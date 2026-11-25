@@ -430,7 +430,7 @@
     if (!btn || !chk || btn.disabled) return;
     const editing = Boolean($('editingPlayerId').value);
     btn.textContent = chk.checked
-      ? (editing ? 'حفظ التعديلات وإرسال التفعيل' : 'حفظ وإرسال رسالة التفعيل للتليكرام')
+      ? (editing ? 'حفظ التعديلات وإشعار واتساب' : 'حفظ وإشعار واتساب')
       : (editing ? 'حفظ التعديلات' : 'حفظ اللاعب');
   }
 
@@ -456,7 +456,9 @@
       if (act) act.checked = false;
       if (course) course.checked = false;
       // savePlayer يقرأ الخيارات بشكل متزامن عند بدء الحفظ، ثم نعيدها كما كانت
+      window.__pgSkipSaveWhatsAppOnce = true;
       form.requestSubmit();
+      window.__pgSkipSaveWhatsAppOnce = false;
       if (act) act.checked = prevAct;
       if (course) course.checked = prevCourse;
     });

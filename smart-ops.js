@@ -434,6 +434,152 @@
     catch { prompt('انسخ التقرير:', reportText(computeReport(day))); }
   };
 
+  /* ---------------- إبلاغ المدير بوضع القاعة (من المشرف لواتساب المدير) ---------------- */
+  const CROWD_LABELS = { low: 'هادئ 🟢', medium: 'متوسط 🟡', high: 'مزدحم 🔴' };
+
+  window.openSupervisorGymReportModal = function () {
+    const ops = readJson(OPS_KEY, {});
+    const crowd = readJson('pg_crowd_status_v1', { iron: 'medium', cardio: 'low' });
+    const reports = readJson('pg_gym_status_reports_v1', []);
+    const old = $('pgSupStatusModal');
+    if (old) old.remove();
+
+    const m = document.createElement('div');
+    m.id = 'pgSupStatusModal';
+    m.className = 'fixed inset-0 z-[90] modal-backdrop flex items-center justify-center p-3 overflow-y-auto';
+    m.onclick = e => { if (e.target === m) m.remove(); };
+    m.innerHTML = `
+      <section class="card-bg w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl p-5 space-y-4">
+        <header class="flex items-center justify-between border-b border-slate-700 pb-3">
+          <div>
+            <h2 class="text-lg font-black text-white flex items-center gap-2">
+              <i class="fa-brands fa-whatsapp text-emerald-400"></i> إبلاغ المدير بوضع القاعة
+            </h2>
+            <p class="text-[11px] text-slate-400">يرسل إشعاراً فورياً من واتساب المشرف إلى واتساب المدير ويُحدّث الحالة</p>
+          </div>
+          <button onclick="document.getElementById('pgSupStatusModal').remove()" class="rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-200">إغلاق ✕</button>
+        </header>
+
+        <div class="grid md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-sky-300 mb-1">حالة قسم الحديد</label>
+            <select id="pgSupIron" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-white">
+              <option value="low" ${crowd.iron === 'low' ? 'selected' : ''}>هادئ 🟢</option>
+              <option value="medium" ${crowd.iron === 'medium' ? 'selected' : ''}>متوسط 🟡</option>
+              <option value="high" ${crowd.iron === 'high' ? 'selected' : ''}>مزدحم 🔴</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-sky-300 mb-1">حالة قسم الكارديو</label>
+            <select id="pgSupCardio" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-white">
+              <option value="low" ${crowd.cardio === 'low' ? 'selected' : ''}>هادئ 🟢</option>
+              <option value="medium" ${crowd.cardio === 'medium' ? 'selected' : ''}>متوسط 🟡</option>
+              <option value="high" ${crowd.cardio === 'high' ? 'selected' : ''}>مزدحم 🔴</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-sky-300 mb-1">الوضع العام للقاعة</label>
+          <select id="pgSupCondition" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-white">
+            <option value="مفتوحة وتعمل بشكل طبيعي ✅">مفتوحة وتعمل بشكل طبيعي ✅</option>
+            <option value="ازدحام شديد في القاعة 🔥">ازدحام شديد في القاعة 🔥</option>
+            <option value="عطل أو صيانة في أحد الأجهزة 🔧">عطل أو صيانة في أحد الأجهزة 🔧</option>
+            <option value="نقص في المخزن / المشروبات 📦">نقص في المخزن / المشروبات 📦</option>
+            <option value="ملاحظة طارئة / إغلاق مؤقت ⚠️">ملاحظة طارئة / إغلاق مؤقت ⚠️</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">ملاحظة المشرف للمدير</label>
+          <textarea id="pgSupNote" rows="3" maxlength="350" placeholder="مثلاً: القاعة ممتازة، جهاز الكيبل يحتاج شد سلك، حضور اليوم قوي..." class="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs text-white"></textarea>
+        </div>
+
+        <div class="rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-3.5 space-y-2">
+          <label class="block text-xs font-bold text-emerald-300">رقم واتساب المدير (يُحفظ ويصل لكل المشرفين)</label>
+          <input id="pgSupManagerPhone" value="${safe(ops.captainPhone || '')}" placeholder="07801234567" dir="ltr" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" />
+        </div>
+
+        <button onclick="pgSendSupervisorGymReport()" class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 py-3 text-xs font-black text-white flex items-center justify-center gap-2">
+          <i class="fa-brands fa-whatsapp text-base"></i> حفظ وإرسال الإشعار للمدير على واتساب
+        </button>
+
+        ${reports.length ? `
+          <div class="border-t border-slate-800 pt-3 space-y-2">
+            <p class="text-xs font-black text-slate-300">آخر البلاغات المرسلة:</p>
+            ${reports.slice(0, 3).map(r => `
+              <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-2.5 text-[11px] text-slate-300">
+                <div class="flex justify-between text-sky-300 font-bold">
+                  <span>${safe(r.by)} — ${safe(r.condition)}</span>
+                  <span class="text-slate-500">${safe(r.time)}</span>
+                </div>
+                <p class="mt-1">الحديد: ${CROWD_LABELS[r.iron] || r.iron} · الكارديو: ${CROWD_LABELS[r.cardio] || r.cardio}</p>
+                ${r.note ? `<p class="mt-0.5 text-slate-400">${safe(r.note)}</p>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </section>
+    `;
+    document.body.appendChild(m);
+  };
+
+  window.pgSendSupervisorGymReport = function () {
+    const phone = ($('pgSupManagerPhone')?.value || '').trim();
+    const intl = toIntlPhone(phone);
+    if (!intl) {
+      toast('أدخل رقم واتساب المدير أولاً', 'warning');
+      return;
+    }
+
+    const iron = $('pgSupIron')?.value || 'medium';
+    const cardio = $('pgSupCardio')?.value || 'low';
+    const condition = $('pgSupCondition')?.value || 'مفتوحة وتعمل بشكل طبيعي ✅';
+    const note = ($('pgSupNote')?.value || '').trim();
+    const nowTime = new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' });
+    const day = todayStr();
+    const attToday = readJson('pg_attendance_v1', []).filter(a => a.date === day && a.type === 'in').length;
+
+    const ops = readJson(OPS_KEY, {});
+    ops.captainPhone = phone;
+    writeJson(OPS_KEY, ops);
+
+    writeJson('pg_crowd_status_v1', { iron, cardio, updatedAt: new Date().toISOString() });
+
+    const reports = readJson('pg_gym_status_reports_v1', []);
+    reports.unshift({
+      id: 'rep_' + Date.now(),
+      by: senderName(),
+      iron,
+      cardio,
+      condition,
+      note,
+      date: day,
+      time: `${day} ${nowTime}`,
+      updatedAt: new Date().toISOString()
+    });
+    if (reports.length > 30) reports.length = 30;
+    writeJson('pg_gym_status_reports_v1', reports);
+
+    if (typeof logActivity === 'function') logActivity(`بلاغ وضع القاعة للمدير: ${condition}`);
+
+    const msg = [
+      `📢 *بلاغ وضع القاعة — ${gymName()}*`,
+      `👤 المبلّغ: *${senderName()}*`,
+      `🕒 الوقت: ${day} (${nowTime})`,
+      `━━━━━━━━━━━━`,
+      `🏋️ قسم الحديد: ${CROWD_LABELS[iron] || iron}`,
+      `🏃 قسم الكارديو: ${CROWD_LABELS[cardio] || cardio}`,
+      `👥 حضور اليوم: ${attToday} لاعب`,
+      `📌 الوضع العام: *${condition}*`,
+      note ? `📝 ملاحظة: ${note}` : ''
+    ].filter(Boolean).join('\n');
+
+    openWa(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`);
+    toast('تم حفظ البلاغ وفتح واتساب لإشعار المدير ✅', 'success');
+    window.openSupervisorGymReportModal();
+  };
+
   /* ---------------- الواجهة ---------------- */
   function injectLinks() {
     const sec = $('pgSmartToolsNav');
@@ -442,6 +588,7 @@
     wrap.id = 'pgOpsNav';
     wrap.className = 'space-y-1';
     wrap.innerHTML = `
+      <button class="sidebar-link" onclick="openSupervisorGymReportModal(); closeMobileMenu?.()"><i class="fa-solid fa-bullhorn text-emerald-400"></i><span>إبلاغ المدير بوضع القاعة</span></button>
       <button class="sidebar-link" onclick="openDailyReport(); closeMobileMenu?.()"><i class="fa-solid fa-chart-pie text-emerald-400"></i><span>تقرير الأرباح اليومي</span></button>
       <button class="sidebar-link" onclick="openFreezeModal(); closeMobileMenu?.()"><i class="fa-solid fa-snowflake text-sky-300"></i><span>تجميد الاشتراكات</span></button>
       <button class="sidebar-link" onclick="openSmartWhatsAppCenter('absent'); closeMobileMenu?.()"><i class="fa-solid fa-user-clock text-sky-400"></i><span>تنبيه الغياب</span></button>
