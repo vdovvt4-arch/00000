@@ -1,29 +1,27 @@
-// Service Worker - Power Gym (نسخة الويب/الهاتف PWA)
-// - ملفات التطبيق: الشبكة أولاً ثم النسخة المخزنة (لتصل التحديثات ويعمل بدون إنترنت)
-// - ملفات الـ CDN (Tailwind / الخطوط / الأيقونات): من الذاكرة أولاً مع تحديث بالخلفية
-const CACHE_NAME = 'power-gym-web-v43';
+// Service Worker - Power Gym Studio v4.0 (PWA Offline-First)
+const CACHE_NAME = 'power-gym-web-v57';
 const LOCAL_ASSETS = [
   './',
   './index.html',
-  './style.css',
-  './theme.css',
-  './mobile.css',
-  './studio.css',
-  './modern-theme.css',
+  './dist/app.css',
+  './visual-refresh.css',
+  './assets/images/hero-gym.jpg',
   './storage-shim.js',
-  './app.js',
+  './js/data-foundation.js',
+  './js/core.js',
+  './js/calendar.js',
+  './js/finance.js',
+  './js/telegram.js',
+  './js/players.js',
   './ui-enhancements.js',
   './reports.js',
   './receipts.js',
   './extras.js',
   './advanced.js',
-  './studio-motion.js',
   './cloud-sync.js',
-  './smart-gym.js',
+  './js/backend-api.js',
   './smart-ops.js',
   './store-admin.js',
-  './ambient-music.js',
-  './smart-accounting.js',
   './smart-notifications.js',
   './store.html',
   './store.js',
@@ -35,15 +33,14 @@ const LOCAL_ASSETS = [
   './apple-touch-icon.png',
   './bg-watermark.png'
 ];
-const CDN_HOSTS = ['cdn.tailwindcss.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com', 'images.unsplash.com'];
+const CDN_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache =>
-      Promise.all(LOCAL_ASSETS.map(url => cache.add(url).catch(() => {})))
-    )
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(LOCAL_ASSETS))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
@@ -57,8 +54,27 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
+
   const url = new URL(req.url);
-  if (url.hostname === 'api.qrserver.com' || url.hostname.endsWith('.supabase.co')) return;
+
+  if (url.hostname.endsWith('.supabase.co') || url.hostname === 'api.telegram.org' || url.hostname === 'api.qrserver.com') {
+    return;
+  }
+
+  if (CDN_HOSTS.includes(url.hostname)) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(cache =>
+        cache.match(req).then(cached => {
+          const net = fetch(req).then(res => {
+            if (res && res.ok) cache.put(req, res.clone());
+            return res;
+          }).catch(() => cached);
+          return cached || net;
+        })
+      )
+    );
+    return;
+  }
 
   if (url.origin === self.location.origin) {
     event.respondWith(
@@ -66,29 +82,11 @@ self.addEventListener('fetch', event => {
         .then(res => {
           if (res && res.ok) {
             const copy = res.clone();
-            caches.open(CACHE_NAME).then(c => c.put(req, copy));
+            caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
           }
           return res;
         })
-        .catch(() => caches.match(req).then(hit => hit || (req.mode === 'navigate' ? caches.match('./index.html') : Response.error())))
-    );
-    return;
-  }
-
-  if (CDN_HOSTS.includes(url.hostname)) {
-    event.respondWith(
-      caches.match(req).then(hit => {
-        const network = fetch(req)
-          .then(res => {
-            if (res && (res.ok || res.type === 'opaque')) {
-              const copy = res.clone();
-              caches.open(CACHE_NAME).then(c => c.put(req, copy));
-            }
-            return res;
-          })
-          .catch(() => hit);
-        return hit || network;
-      })
+        .catch(() => caches.match(req).then(cached => cached || (req.mode === 'navigate' ? caches.match('./index.html') : undefined)))
     );
   }
 });

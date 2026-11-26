@@ -7,11 +7,7 @@
   const heroImage = document.getElementById('heroSlideshowImage');
   const heroSlideStatus = document.getElementById('heroSlideStatus');
   let isOnline = navigator.onLine;
-  const heroSlides = [
-    'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1600&q=80',
-    'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=1600&q=80',
-    'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1600&q=80'
-  ];
+  const heroSlides = [];
   let heroSlideIndex = 0;
 
   function updateNetworkStatus() {

@@ -174,7 +174,7 @@
       description: String(d.description || TYPES[d.type] || '').slice(0, 120),
       startDate: d.startDate || '',
       endDate: d.endDate || '',
-      durationMonths: toInt(d.durationMonths),
+      durationMonths: Number(d.durationMonths) || 0,
       ...amounts,
       taxPercent: amounts.tax > 0 ? s.taxPercent : 0,
       method: METHODS[d.method] ? d.method : s.defaultMethod,
@@ -205,7 +205,7 @@
     if (isDebt) {
       rows.push(`<tr><td>${esc(rec.description)}</td><td class="n">${money(rec.total, s)}</td></tr>`);
     } else {
-      rows.push(`<tr><td>${esc(rec.description)}${rec.durationMonths ? ` (${rec.durationMonths} شهر)` : ''}</td><td class="n">${money(rec.listPrice, s)}</td></tr>`);
+      rows.push(`<tr><td>${esc(rec.description)}${rec.durationMonths ? ` (${Number(rec.durationMonths) === 0.5 ? 'نصف شهر' : rec.durationMonths + ' شهر'})` : ''}</td><td class="n">${money(rec.listPrice, s)}</td></tr>`);
       if (rec.discount > 0) rows.push(`<tr><td>خصم</td><td class="n">- ${money(rec.discount, s)}</td></tr>`);
     }
     const totals = [];
@@ -425,6 +425,7 @@
   }
 
   function injectSidebarButton() {
+    if (document.querySelector('[data-nav-key="receipts"]')) return;
     const anchor = document.querySelector('#desktopSidebar button[onclick*="openFinanceModal(\'customize\')"]');
     if (!anchor) return;
     const btn = document.createElement('button');
@@ -801,7 +802,7 @@
 
   const renewCfg = {
     paid: 'renewPaidAmount', debt: 'renewDebtAmount', disc: 'rcRenewDiscount', method: 'rcRenewMethod', hint: 'rcRenewHint',
-    months: () => parseInt($('renewDurationMonths').value, 10) || 1,
+    months: () => parseFloat($('renewDurationMonths').value) || 1,
     oldDebt: () => {
       const p = players.find(x => x.id === $('renewPlayerId').value);
       return p ? toInt(p.debtAmount) : 0;
@@ -809,7 +810,7 @@
   };
   const newCfg = {
     paid: 'paidAmount', debt: 'debtAmount', disc: 'rcNewDiscount', method: 'rcNewMethod', hint: 'rcNewHint',
-    months: () => parseInt($('durationMonths').value, 10) || 1
+    months: () => parseFloat($('durationMonths').value) || 1
   };
 
   function updateHints() {
@@ -846,7 +847,7 @@
       const playerId = $('renewPlayerId').value;
       const startDate = $('renewStartDate').value;
       const endDate = $('renewEndDate').value;
-      const months = parseInt($('renewDurationMonths').value, 10) || 1;
+      const months = parseFloat($('renewDurationMonths').value) || 1;
       const paid = toInt($('renewPaidAmount').value);
       const debt = toInt($('renewDebtAmount').value);
       const discount = toInt($('rcRenewDiscount')?.value);

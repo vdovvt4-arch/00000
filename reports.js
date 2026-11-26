@@ -89,6 +89,16 @@
     const net = totalIncome - expenses;
     const newDebts = sumBy(debtEntries, d => d.amount);
     const currentDebt = calculateFinancialMetrics().totalDebt;
+    let storeSalesTotal = 0;
+    let storeSalesCount = 0;
+    try {
+      const salesArr = JSON.parse(localStorage.getItem('pg_sales_v1') || '[]');
+      if (Array.isArray(salesArr)) {
+        const mSales = salesArr.filter(s => inMonth(s.date, ym));
+        storeSalesCount = mSales.length;
+        storeSalesTotal = sumBy(mSales, s => s.total);
+      }
+    } catch { /* ignore */ }
 
     return {
       ym,
@@ -108,8 +118,10 @@
       net,
       newDebts,
       currentDebt,
+      storeSalesTotal,
+      storeSalesCount,
       byPlan: groupBy(newPlayers, p => p.planType || 'غير محدد'),
-      byDuration: groupBy(newPlayers, p => `${Number(p.durationMonths) || 1} شهر`),
+      byDuration: groupBy(newPlayers, p => Number(p.durationMonths) === 0.5 ? 'نصف شهر (15 يوم)' : `${Number(p.durationMonths) || 1} شهر`),
       txs,
       today
     };
@@ -205,6 +217,7 @@
         ${kpi('صافي الشهر', money(r.net), r.net >= 0 ? 'ok' : 'bad')}
         ${kpi('الديون الحالية', money(r.currentDebt), r.currentDebt > 0 ? 'bad' : '')}
         ${kpi('سجلوا حضور', r.checkedIn.length)}
+        ${kpi(`مبيعات المخزن/المتجر (${r.storeSalesCount || 0})`, money(r.storeSalesTotal || 0), 'ok')}
       </div>
 
       <div class="rpt-section">
@@ -227,7 +240,7 @@
         ${r.renewals.length === 0 ? '<p class="rpt-empty">لا توجد تجديدات هذا الشهر.</p>' : playersTable(r.renewals, [
           { label: 'التاريخ', get: x => x.date },
           { label: 'الاسم', get: x => x.playerName },
-          { label: 'المدة', get: x => `${x.durationMonths} شهر` },
+          { label: 'المدة', get: x => Number(x.durationMonths) === 0.5 ? 'نصف شهر' : `${x.durationMonths} شهر` },
           { label: 'البدء', get: x => x.startDate },
           { label: 'الانتهاء', get: x => x.endDate },
           { label: 'المدفوع', get: x => money(x.paidAmount) }
@@ -434,6 +447,7 @@
   }
 
   function injectSidebarButton() {
+    if (document.querySelector('[data-nav-key="monthly-report"]')) return;
     const anchor = document.querySelector('#desktopSidebar button[onclick*="openFinanceModal(\'customize\')"]');
     if (!anchor) return;
     const btn = document.createElement('button');

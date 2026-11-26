@@ -180,9 +180,9 @@
         for (var i = 0; i < keys.length; i++) {
           var k = String(keys[i]);
           var v = String(vals[i] ?? '');
-          // إذا لم يكن المفتاح قد كُتب للتو خلال بدء التشغيل، وكان غير موجود أو أكبر حجماً في IndexedDB
+          // نسترجع من IndexedDB فقط إذا كان المفتاح غير موجود في localStorage (مثل تفريغ المتصفح أو تجاوز حد 5MB)
           if (!Object.prototype.hasOwnProperty.call(pendingWrites, k)) {
-            if (!phoneData[k] || (v.length > (phoneData[k] || '').length)) {
+            if (!Object.prototype.hasOwnProperty.call(phoneData, k) || phoneData[k] === null || phoneData[k] === '') {
               phoneData[k] = v;
               if (rawLS) {
                 try { rawLS.setItem(k, v); } catch (e) { /* ignore */ }

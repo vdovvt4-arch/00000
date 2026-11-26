@@ -246,6 +246,80 @@
     window.pgOpenTemplates();
   };
 
+  /* ---------------- الإرسال التلقائي عبر السيرفر (Meta API) ---------------- */
+  window.pgOpenAutoWaModal = function () {
+    const old = $('pgAutoWaModal');
+    if (old) old.remove();
+    const m = document.createElement('div');
+    m.id = 'pgAutoWaModal';
+    m.className = 'fixed inset-0 z-[94] modal-backdrop flex items-center justify-center p-3 overflow-y-auto';
+    m.onclick = e => { if (e.target === m) m.remove(); };
+    m.innerHTML = `
+      <section class="card-bg w-full max-w-xl rounded-3xl p-5 space-y-4 border border-amber-500/30">
+        <header class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div>
+            <h2 class="text-base font-black text-white flex items-center gap-2">
+              <i class="fa-solid fa-robot text-amber-400"></i> الإرسال التلقائي 24/7 (Meta WhatsApp API)
+            </h2>
+            <p class="text-[11px] text-zinc-400">يعمل عبر Supabase Edge Function + Cron يومياً بدون تدخل بشري</p>
+          </div>
+          <button onclick="document.getElementById('pgAutoWaModal').remove()" class="rounded-xl bg-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-200">✕</button>
+        </header>
+
+        <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3.5 text-xs text-zinc-300 space-y-1.5 leading-6">
+          <p class="font-black text-amber-300">حالة الربط البرمجي:</p>
+          <p>• دالة السيرفر: <code dir="ltr" class="text-emerald-300">supabase/functions/auto-whatsapp-alerts/index.ts</code></p>
+          <p>• الجدولة اليومية: <code dir="ltr" class="text-emerald-300">supabase/auto-whatsapp-cron.sql</code> (10:00 ص بغداد)</p>
+          <p>• دليل التفعيل الكامل: <code dir="ltr" class="text-amber-200">AUTO_WHATSAPP_SETUP.md</code></p>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="pgTriggerAutoWa(true)" class="flex-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 py-2.5 px-3 text-xs font-bold text-zinc-100">
+            <i class="fa-solid fa-eye ml-1"></i> معاينة المستحقين اليوم (Dry Run)
+          </button>
+          <button type="button" onclick="pgTriggerAutoWa(false)" class="flex-1 gold-gradient rounded-xl py-2.5 px-3 text-xs font-black">
+            <i class="fa-solid fa-paper-plane ml-1"></i> إرسال تلقائي الآن
+          </button>
+        </div>
+
+        <div id="pgAutoWaResult" class="text-xs text-zinc-300"></div>
+      </section>`;
+    document.body.appendChild(m);
+  };
+
+  window.pgTriggerAutoWa = async function (dryRun) {
+    const box = $('pgAutoWaResult');
+    if (!window.pgCloudSync) { toast('المزامنة السحابية غير مفعّلة', 'warning'); return; }
+    const c = window.pgCloudSync.getConfig();
+    if (!c.supabaseUrl || !c.syncSecret) { toast('تأكد من إعدادات السيرفر والمزامنة', 'warning'); return; }
+    if (box) box.innerHTML = '<p class="text-amber-300 font-bold py-2">جارٍ الاتصال بالسيرفر...</p>';
+    try {
+      const res = await fetch(`${c.supabaseUrl}/functions/v1/auto-whatsapp-alerts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: c.supabaseAnonKey },
+        body: JSON.stringify({ gym_id: c.gymId, sync_secret: c.syncSecret, dryRun })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        const msg = data.error === 'missing_whatsapp_env'
+          ? 'الدالة منشورة، لكن يجب إضافة مفاتيح Meta (WHATSAPP_TOKEN و WHATSAPP_PHONE_NUMBER_ID) في Supabase Secrets.'
+          : (res.status === 404 ? 'الدالة غير منشورة بعد على Supabase — اتبع خطوات AUTO_WHATSAPP_SETUP.md.' : (data.error || `HTTP ${res.status}`));
+        if (box) box.innerHTML = `<div class="rounded-xl border border-rose-500/30 bg-rose-950/20 p-3 text-rose-300">${safe(msg)}</div>`;
+        return;
+      }
+      const list = Array.isArray(data.results) ? data.results : [];
+      if (box) {
+        box.innerHTML = `
+          <div class="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-1.5">
+            <p class="font-black text-emerald-300">${dryRun ? `معاينة (${list.length} رسالة مستحقة اليوم)` : `تم الإرسال: ${data.sentCount} | فشل: ${data.failedCount}`}</p>
+            ${list.slice(0, 12).map(r => `<p class="text-[11px] text-zinc-300">• ${safe(r.name)} (${safe(r.phone)}) — ${r.kind === 'soon' ? 'قرب الانتهاء' : 'منتهي'} [${safe(r.status)}]</p>`).join('')}
+          </div>`;
+      }
+    } catch {
+      if (box) box.innerHTML = '<div class="rounded-xl border border-amber-500/30 bg-amber-950/20 p-3 text-amber-200">تعذر الوصول للدالة على Supabase (تأكد من نشرها عبر `supabase functions deploy auto-whatsapp-alerts --no-verify-jwt`).</div>';
+    }
+  };
+
   /* ---------------- تجميد الاشتراك ---------------- */
   let freezeSearch = '';
   window.openFreezeModal = function () {
@@ -586,6 +660,7 @@
 
   /* ---------------- الواجهة ---------------- */
   function injectLinks() {
+    if (document.querySelector('[data-nav-key="smart-ops"]')) return true;
     const sec = $('pgSmartToolsNav');
     if (!sec || $('pgOpsNav')) return false;
     const wrap = document.createElement('div');

@@ -8,6 +8,7 @@
   const CONFIG_KEY = 'pg_cloud_sync_config_v1';
   const ROLE_KEY = 'pg_device_role_v1';
   const DIRTY_KEY = 'pg_cloud_dirty_keys_v1';
+  const FINANCE_KEY = 'power_gym_finance_ledger_v2';
 
   const SYNCED_KEYS = [
     'power_gym_players_v1',
@@ -53,6 +54,7 @@
   const DEFAULT_ROLE = {
     role: 'captain', // 'captain' | 'supervisor'
     supervisorName: 'الكابتن',
+    captainPinHash: '',
     captainPin: ''
   };
 
@@ -72,7 +74,7 @@
     }
   }
 
-  // إعدادات السحابة مثبتة في الكود ولا يغيّرها الكابتن؛ المبرمج فقط عبر وضع المطوّر
+  // إعدادات الاتصال بالسحابة مثبتة داخل التطبيق ليعمل مباشرة على أي جهاز
   const FIXED_CONFIG = {
     enabled: true,
     supabaseUrl: DEFAULT_CONFIG.supabaseUrl,
@@ -80,14 +82,32 @@
     gymId: DEFAULT_CONFIG.gymId,
     syncSecret: DEFAULT_CONFIG.syncSecret
   };
-  const DEV_KEY = 'pg_dev_mode_v1';
-  const DEV_CODE = 'frd2026';
-  const isDev = () => rawLS.getItem(DEV_KEY) === '1';
+
+  async function hashPin(pin) {
+    const clean = String(pin || '').trim();
+    if (!clean) return '';
+    if (window.crypto && crypto.subtle) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(clean + '_pg_role_salt'));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    return clean;
+  }
+
+  async function verifyCaptainPin(pin, info) {
+    const clean = String(pin || '').trim();
+    if (!clean) return false;
+    if (info.captainPinHash) {
+      const h = await hashPin(clean);
+      return h === info.captainPinHash;
+    }
+    if (info.captainPin) return clean === info.captainPin;
+    return false;
+  }
 
   function getConfig() {
     const raw = rawLS.getItem(CONFIG_KEY);
     const merged = Object.assign({}, DEFAULT_CONFIG, safeJsonParse(raw, {}));
-    return isDev() ? merged : Object.assign(merged, FIXED_CONFIG);
+    return Object.assign(merged, FIXED_CONFIG);
   }
 
   function saveConfig(cfg) {
@@ -113,7 +133,8 @@
     const clean = {
       role: info.role === 'supervisor' ? 'supervisor' : 'captain',
       supervisorName: String(info.supervisorName || '').trim() || (info.role === 'supervisor' ? 'مشرف' : 'الكابتن'),
-      captainPin: String(info.captainPin || '').trim()
+      captainPinHash: String(info.captainPinHash || '').trim(),
+      captainPin: '' // لم يعد يُحفظ كنص صريح
     };
     rawLS.setItem(ROLE_KEY, JSON.stringify(clean));
     applyRoleRestrictions();
@@ -197,6 +218,15 @@
       }
     });
     return Array.from(map.values());
+  }
+
+  function mergeFinanceLedger(localValue, remoteValue) {
+    const localLedger = safeJsonParse(localValue, {});
+    const remoteLedger = safeJsonParse(remoteValue, {});
+    const merged = Object.assign({}, remoteLedger, localLedger);
+    merged.transactions = mergeArrayById(localLedger.transactions, remoteLedger.transactions);
+    merged.supervisors = mergeArrayById(localLedger.supervisors, remoteLedger.supervisors);
+    return JSON.stringify(merged);
   }
 
   async function rpcCall(cfg, name, args) {
@@ -316,9 +346,11 @@
         if (!forceOverwrite && prevTs === row.updated_at) return;
 
         const localVal = rawLS.getItem(key);
-        if (!forceOverwrite && dirty.has(key) && ARRAY_MERGE_KEYS.has(key) && localVal) {
-          const merged = mergeArrayById(safeJsonParse(localVal, []), safeJsonParse(row.payload, []));
-          const mergedStr = JSON.stringify(merged);
+        if (!forceOverwrite && dirty.has(key) && localVal &&
+          (ARRAY_MERGE_KEYS.has(key) || key === FINANCE_KEY)) {
+          const mergedStr = key === FINANCE_KEY
+            ? mergeFinanceLedger(localVal, row.payload)
+            : JSON.stringify(mergeArrayById(safeJsonParse(localVal, []), safeJsonParse(row.payload, [])));
           if (mergedStr !== localVal) {
             rawLS.setItem(key, mergedStr);
             changed = true;
@@ -423,10 +455,12 @@
 
     // إظهار/إخفاء عناصر الكابتن فقط للمشرف
     const restrictedSelectors = [
+      '[data-captain-only]',
       'button[onclick*="openFinanceModal(\'profits\'"]',
       'button[onclick*="openSmartAccountingModal"]',
       'button[onclick*="pgDailyClose"]',
-      'button[onclick*="openSettingsModal"]'
+      'button[onclick*="openSettingsModal"]',
+      'button[onclick*="openCloudSyncModal"]'
     ];
     restrictedSelectors.forEach(sel => {
       document.querySelectorAll(sel).forEach(el => {
@@ -467,7 +501,9 @@
     }
   }
 
-  const SQL_SETUP_SNIPPET = `create table if not exists public.gym_sync (
+  const SQL_SETUP_SNIPPET = `-- استخدم ملف gym-sync-secure.sql المرفق لتأمين قاعدة البيانات عبر دوال RPC
+-- تأكد من عدم منح صلاحيات القراءة المباشرة لجدول gym_sync للمجهولين (anon)
+create table if not exists public.gym_sync (
   gym_id text not null,
   storage_key text not null,
   payload text not null,
@@ -476,9 +512,7 @@
   primary key (gym_id, storage_key)
 );
 alter table public.gym_sync enable row level security;
-grant all on table public.gym_sync to anon, authenticated;
-drop policy if exists "gym_sync_all" on public.gym_sync;
-create policy "gym_sync_all" on public.gym_sync for all using (true) with check (true);`;
+revoke all on table public.gym_sync from anon;`;
 
   window.openCloudSyncModal = function () {
     const cfg = getConfig();
@@ -512,7 +546,7 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
               <option value="supervisor" ${roleInfo.role === 'supervisor' ? 'selected' : ''}>مشرف (تسجيل وحضور وتنبيه)</option>
             </select>
             <input id="pgSupNameInput" value="${roleInfo.supervisorName.replace(/"/g, '&quot;')}" placeholder="اسم الكابتن أو المشرف" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" />
-            <input id="pgCaptainPinInput" type="password" value="${roleInfo.captainPin.replace(/"/g, '&quot;')}" placeholder="رمز الكابتن (للرجوع للمدير)" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" dir="ltr" />
+            <input id="pgCaptainPinInput" type="password" value="" placeholder="${(roleInfo.captainPinHash || roleInfo.captainPin) ? 'رمز كابتن محفوظ (اتركه فارغاً للإبقاء)' : 'أنشئ رمز الكابتن (للرجوع للمدير)'}" class="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" dir="ltr" />
           </div>
         </div>
 
@@ -527,7 +561,10 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
           <div class="space-y-2">
             <input id="pgSupabaseUrl" value="${cfg.supabaseUrl.replace(/"/g, '&quot;')}" placeholder="Project URL (https://xxxx.supabase.co)" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" dir="ltr" />
             <input id="pgSupabaseKey" type="password" value="${cfg.supabaseAnonKey.replace(/"/g, '&quot;')}" placeholder="Anon Public Key (eyJ...)" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" dir="ltr" />
-            <input id="pgGymIdInput" value="${cfg.gymId.replace(/"/g, '&quot;')}" placeholder="معرف القاعة (مثلاً: powergym-karbala)" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" dir="ltr" />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <input id="pgGymIdInput" value="${cfg.gymId.replace(/"/g, '&quot;')}" placeholder="معرف القاعة (مثلاً: powergym-main)" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" dir="ltr" />
+              <input id="pgSyncSecretInput" type="password" value="${(cfg.syncSecret || '').replace(/"/g, '&quot;')}" placeholder="مفتاح المزامنة السري (يُنشأ تلقائياً)" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white" dir="ltr" />
+            </div>
           </div>
           <div class="flex flex-wrap gap-2">
             <button onclick="pgSaveCloudSettings()" class="flex-1 gold-gradient text-black font-black py-2 px-4 rounded-xl text-xs">حفظ ومزامنة</button>
@@ -572,24 +609,32 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
     const nextRole = document.getElementById('pgRoleSelect').value;
     const pinInput = document.getElementById('pgCaptainPinInput').value.trim();
 
-    if (currentRole.role === 'supervisor' && nextRole === 'captain' && currentRole.captainPin && pinInput !== currentRole.captainPin) {
-      showToast?.('رمز الكابتن غير صحيح للعودة إلى صلاحية المدير', 'error');
-      return;
+    if (currentRole.role === 'supervisor' && nextRole === 'captain' && (currentRole.captainPinHash || currentRole.captainPin)) {
+      const ok = await verifyCaptainPin(pinInput, currentRole);
+      if (!ok) {
+        showToast?.('رمز الكابتن غير صحيح للعودة إلى صلاحية المدير', 'error');
+        return;
+      }
     }
+
+    const nextPinHash = pinInput
+      ? await hashPin(pinInput)
+      : (currentRole.captainPinHash || (currentRole.captainPin ? await hashPin(currentRole.captainPin) : ''));
 
     saveRoleInfo({
       role: nextRole,
       supervisorName: document.getElementById('pgSupNameInput').value,
-      captainPin: pinInput || currentRole.captainPin
+      captainPinHash: nextPinHash
     });
 
     const prev = getConfig();
+    const secretVal = (document.getElementById('pgSyncSecretInput')?.value || '').trim();
     saveConfig({
       enabled: document.getElementById('pgSyncEnabled').checked,
       supabaseUrl: document.getElementById('pgSupabaseUrl').value,
       supabaseAnonKey: document.getElementById('pgSupabaseKey').value,
       gymId: document.getElementById('pgGymIdInput').value,
-      syncSecret: prev.syncSecret
+      syncSecret: secretVal || prev.syncSecret
     });
 
     await syncNow(true);
@@ -624,10 +669,9 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
       }
     }
     const base = window.location.origin + window.location.pathname;
-    const params = new URLSearchParams({
-      pgRole: 'supervisor'
-    });
-    const link = `${base}?${params.toString()}`;
+    const params = new URLSearchParams({ pgRole: 'supervisor' });
+    const hashSecret = cfg.syncSecret ? `#pgSecret=${encodeURIComponent(cfg.syncSecret)}` : '';
+    const link = `${base}?${params.toString()}${hashSecret}`;
     try {
       await navigator.clipboard.writeText(link);
       showToast?.('تم نسخ رابط المشرف! أرسله له على واتساب 📲', 'success');
@@ -638,23 +682,26 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
 
   function checkInviteParams() {
     const sp = new URLSearchParams(window.location.search);
+    const hp = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
     let changed = false;
 
-    // وضع المطوّر (للمبرمج فقط)
-    const dev = sp.get('dev');
-    if (dev === DEV_CODE) { rawLS.setItem(DEV_KEY, '1'); changed = true; }
-    else if (dev === 'off') { rawLS.removeItem(DEV_KEY); changed = true; }
+    const secretFromHash = hp.get('pgSecret');
+    if (secretFromHash) {
+      const cfg = getConfig();
+      saveConfig(Object.assign({}, cfg, { syncSecret: secretFromHash }));
+      changed = true;
+    }
 
-    // رابط دعوة المشرف أو استرجاع وضع الكابتن
+    // رابط دعوة المشرف
     if (sp.get('pgRole') === 'supervisor') {
       const cur = getRoleInfo();
       if (cur.role !== 'supervisor') {
-        saveRoleInfo({ role: 'supervisor', supervisorName: cur.supervisorName === 'الكابتن' ? 'مشرف' : cur.supervisorName, captainPin: cur.captainPin });
+        saveRoleInfo({
+          role: 'supervisor',
+          supervisorName: cur.supervisorName === 'الكابتن' ? 'مشرف' : cur.supervisorName,
+          captainPinHash: cur.captainPinHash || ''
+        });
       }
-      changed = true;
-    } else if (sp.get('pgRole') === 'captain' && dev === DEV_CODE) {
-      const cur = getRoleInfo();
-      saveRoleInfo({ role: 'captain', supervisorName: cur.supervisorName === 'مشرف' ? 'الكابتن' : cur.supervisorName, captainPin: cur.captainPin });
       changed = true;
     }
     if (changed) window.history.replaceState({}, '', window.location.pathname);
@@ -690,10 +737,11 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
 
   function injectCloudUi() {
     const nav = document.querySelector('#desktopSidebar nav');
-    if (isDev() && nav && !document.getElementById('pgCloudNavBtn')) {
+    if (nav && !document.getElementById('pgCloudNavBtn') && !document.querySelector('[data-pg-cloud-btn]')) {
       const btn = document.createElement('button');
       btn.id = 'pgCloudNavBtn';
       btn.className = 'sidebar-link';
+      btn.setAttribute('data-captain-only', '1');
       btn.onclick = () => { window.openCloudSyncModal(); if (typeof closeMobileMenu === 'function') closeMobileMenu(); };
       btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-sky-400"></i><span>السيرفر والمشرفين</span>';
       const sysHeader = Array.from(nav.querySelectorAll('section')).pop();
@@ -701,17 +749,18 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
       else nav.appendChild(btn);
     }
 
-    if (nav && !document.getElementById('pgInviteNavBtn') && !isDev()) {
+    if (nav && !document.getElementById('pgInviteNavBtn') && !document.querySelector('[data-pg-invite-btn]')) {
       const inv = document.createElement('button');
       inv.id = 'pgInviteNavBtn';
       inv.className = 'sidebar-link';
+      inv.setAttribute('data-captain-only', '1');
       inv.onclick = () => { window.pgCopySupervisorLink(); if (typeof closeMobileMenu === 'function') closeMobileMenu(); };
       inv.innerHTML = '<i class="fa-solid fa-user-plus text-sky-400"></i><span>نسخ رابط دعوة مشرف</span>';
       const last = Array.from(nav.querySelectorAll('section')).pop();
       if (last) last.appendChild(inv);
     }
 
-    if (nav && !document.getElementById('pgRoleSwitchNavBtn')) {
+    if (nav && !document.getElementById('pgRoleSwitchNavBtn') && !document.querySelector('[data-pg-role-btn]')) {
       const swBtn = document.createElement('button');
       swBtn.id = 'pgRoleSwitchNavBtn';
       swBtn.className = 'sidebar-link';
@@ -721,7 +770,7 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
       if (last) last.appendChild(swBtn);
     }
 
-    const headerTitle = document.querySelector('#desktopSidebar .border-b');
+    const headerTitle = document.querySelector('#desktopSidebar .border-b, #sidebarBrandHeader');
     if (headerTitle && !document.getElementById('pgCloudStatusBadge')) {
       const bar = document.createElement('div');
       bar.className = 'mt-2.5 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-300';
@@ -739,7 +788,7 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
   window.pgSwitchRoleQuick = function () {
     const info = getRoleInfo();
     const isSup = info.role === 'supervisor';
-    const hasPin = Boolean(info.captainPin);
+    const hasPin = Boolean(info.captainPinHash || info.captainPin);
     const old = document.getElementById('pgRoleSwitchModal');
     if (old) old.remove();
 
@@ -787,7 +836,7 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
     document.body.appendChild(modal);
   };
 
-  window.pgConfirmRoleSwitch = function (targetRole) {
+  window.pgConfirmRoleSwitch = async function (targetRole) {
     const info = getRoleInfo();
     const pin = (document.getElementById('pgRolePinInput')?.value || '').trim();
     if (pin.length < 4) {
@@ -795,36 +844,38 @@ create policy "gym_sync_all" on public.gym_sync for all using (true) with check 
       return;
     }
 
+    const existingHash = info.captainPinHash || (info.captainPin ? await hashPin(info.captainPin) : '');
+
     if (targetRole === 'captain') {
-      const valid = (info.captainPin && pin === info.captainPin) || pin === DEV_CODE;
+      const valid = await verifyCaptainPin(pin, info);
       if (!valid) {
         showToast?.('الرمز الخاص غير صحيح', 'error');
         return;
       }
-      saveRoleInfo({ role: 'captain', supervisorName: 'الكابتن', captainPin: info.captainPin || pin });
+      saveRoleInfo({ role: 'captain', supervisorName: 'الكابتن', captainPinHash: existingHash || await hashPin(pin) });
       document.getElementById('pgRoleSwitchModal')?.remove();
       showToast?.('تم التحويل إلى كابتن مدير بنجاح ✅', 'success');
       return;
     }
 
-    if (info.captainPin && pin !== info.captainPin && pin !== DEV_CODE) {
+    if (existingHash && !(await verifyCaptainPin(pin, info))) {
       showToast?.('الرمز الخاص غير صحيح', 'error');
       return;
     }
     const supName = (document.getElementById('pgRoleNameInput')?.value || '').trim() || 'مشرف';
-    saveRoleInfo({ role: 'supervisor', supervisorName: supName, captainPin: info.captainPin || pin });
+    saveRoleInfo({ role: 'supervisor', supervisorName: supName, captainPinHash: existingHash || await hashPin(pin) });
     document.getElementById('pgRoleSwitchModal')?.remove();
     showToast?.('تم التحويل إلى كابتن مشرف بنجاح ✓', 'success');
   };
 
-  window.pgUpdateCaptainPinOnly = function () {
+  window.pgUpdateCaptainPinOnly = async function () {
     const info = getRoleInfo();
     const pin = (document.getElementById('pgRolePinInput')?.value || '').trim();
     if (pin.length < 4) {
       showToast?.('أدخل رمزاً من 4 خانات على الأقل', 'warning');
       return;
     }
-    saveRoleInfo({ role: 'captain', supervisorName: info.supervisorName || 'الكابتن', captainPin: pin });
+    saveRoleInfo({ role: 'captain', supervisorName: info.supervisorName || 'الكابتن', captainPinHash: await hashPin(pin) });
     document.getElementById('pgRoleSwitchModal')?.remove();
     showToast?.('تم تحديث الرمز الخاص بنجاح ✓', 'success');
   };

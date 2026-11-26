@@ -279,6 +279,7 @@
   };
 
   function injectLink() {
+    if (document.querySelector('[data-nav-key="smart-accounting"]')) return true;
     const finSection = Array.from(document.querySelectorAll('#desktopSidebar nav section'))[1];
     if (!finSection || $('pgAccountingNavBtn')) return false;
     const b = document.createElement('button');

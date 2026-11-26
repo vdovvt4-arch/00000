@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#ffffff">
-  <title>متجر القاعة</title>
+  <title>متجر بور جم</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -66,21 +66,193 @@
     .ok h3 { font-size: 18px; margin: 8px 0 6px; }
     .ok p { color: var(--muted); font-size: 13px; line-height: 1.8; margin-bottom: 14px; }
     footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+    :root { --brand-rgb: 8, 145, 178; }
+    body {
+      background:
+        radial-gradient(ellipse at 92% -12%, rgba(var(--brand-rgb), .12), transparent 38rem),
+        var(--bg);
+    }
+    header {
+      text-align: right;
+      padding: 14px max(16px, calc((100% - 1120px) / 2));
+      backdrop-filter: blur(16px);
+      background: color-mix(in srgb, var(--card) 90%, transparent);
+      box-shadow: 0 8px 26px rgba(15, 23, 42, .06);
+    }
+    .store-topbar { display:flex; align-items:center; justify-content:space-between; gap:14px; max-width:1120px; margin:auto; }
+    .store-brand { display:flex; align-items:center; gap:12px; min-width:0; }
+    .brand-mark { width:46px; height:46px; flex:none; padding:6px; border-radius:15px; background:var(--bg); border:1px solid var(--line); box-shadow:0 6px 18px rgba(15,23,42,.1); }
+    .brand-mark img { width:100%; height:100%; object-fit:contain; }
+    .brand-copy { min-width:0; }
+    .brand-copy h1 { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:19px; }
+    .brand-copy p { margin:2px 0 0; font-size:12px; }
+    .store-status { flex:none; display:inline-flex; align-items:center; gap:7px; padding:7px 11px; border:1px solid rgba(16,185,129,.25); border-radius:999px; background:rgba(16,185,129,.08); color:#059669; font-size:11px; font-weight:800; }
+    .store-status::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; box-shadow:0 0 10px currentColor; }
+    .store-status.is-closed { color:#e11d48; background:rgba(225,29,72,.08); border-color:rgba(225,29,72,.22); }
+    main { max-width:1120px; padding-top:22px; }
+    .store-hero {
+      position:relative; isolation:isolate; overflow:hidden; min-height:230px; display:flex; align-items:center;
+      margin-bottom:16px; padding:28px; border:1px solid rgba(var(--brand-rgb),.24); border-radius:26px;
+      color:#fff; background:
+        linear-gradient(90deg, rgba(2,6,23,.94) 0%, rgba(2,6,23,.8) 48%, rgba(2,6,23,.32) 100%),
+        url("assets/images/hero-gym.jpg") center 48% / cover;
+      box-shadow:0 24px 54px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.12);
+    }
+    .store-hero::after { content:""; position:absolute; z-index:-1; inset:0; background:radial-gradient(ellipse at 82% 25%, rgba(var(--brand-rgb),.3), transparent 38%); }
+    .hero-copy { max-width:570px; }
+    .hero-eyebrow { display:inline-flex; align-items:center; gap:7px; margin-bottom:10px; padding:5px 10px; border:1px solid rgba(255,255,255,.18); border-radius:999px; background:rgba(255,255,255,.08); color:#dbeafe; font-size:11px; font-weight:800; }
+    .hero-copy h2 { font-size:clamp(24px, 4vw, 36px); line-height:1.35; font-weight:900; }
+    .hero-copy h2 span { color:#fbbf24; text-shadow:0 0 24px rgba(251,191,36,.25); }
+    .hero-copy > p { margin-top:7px; max-width:500px; color:rgba(255,255,255,.78); font-size:13px; line-height:1.9; }
+    .hero-link { display:inline-flex; align-items:center; gap:8px; margin-top:16px; padding:10px 16px; border-radius:12px; color:#111827; background:linear-gradient(135deg,#fde68a,#f59e0b); text-decoration:none; font-size:13px; font-weight:900; box-shadow:0 8px 22px rgba(245,158,11,.22); transition:transform .18s,filter .18s; }
+    .hero-link:hover { transform:translateY(-2px); filter:brightness(1.05); }
+    .benefits { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:24px; }
+    .benefit { display:flex; align-items:center; gap:10px; min-width:0; padding:12px 14px; border:1px solid var(--line); border-radius:15px; background:var(--card); box-shadow:0 8px 20px rgba(15,23,42,.035); }
+    .benefit-icon { width:35px; height:35px; display:grid; place-items:center; flex:none; border-radius:11px; background:rgba(var(--brand-rgb),.1); color:var(--brand); }
+    .benefit-icon svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .benefit strong { display:block; font-size:12px; }
+    .benefit span { display:block; margin-top:1px; color:var(--muted); font-size:10px; line-height:1.5; }
+    .offer-banner { display:none; align-items:center; justify-content:space-between; gap:14px; margin-bottom:20px; padding:14px 17px; border:1px solid rgba(245,158,11,.25); border-radius:17px; color:var(--ink); background:linear-gradient(110deg,rgba(245,158,11,.12),rgba(245,158,11,.035) 65%,var(--card)); }
+    .offer-banner.show { display:flex; }
+    .offer-title { font-weight:900; font-size:14px; }
+    .offer-detail { margin-top:2px; color:var(--muted); font-size:11px; }
+    .offer-button { flex:none; border:1px solid rgba(245,158,11,.3); border-radius:11px; padding:8px 12px; color:#92400e; background:rgba(245,158,11,.12); font:inherit; font-size:11px; font-weight:900; cursor:pointer; }
+    body.theme-dark .offer-button { color:#fde68a; }
+    .catalog-head { display:flex; align-items:end; justify-content:space-between; gap:12px; margin:4px 0 12px; }
+    .catalog-head h2 { font-size:19px; font-weight:900; }
+    .catalog-head p { color:var(--muted); font-size:11px; }
+    .results-count { flex:none; color:var(--muted); font-size:11px; font-weight:700; }
+    .shop-tools { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; margin-bottom:12px; }
+    .search-wrap { position:relative; }
+    .search-wrap::before { content:"⌕"; position:absolute; right:13px; top:5px; color:var(--muted); font-size:24px; line-height:1; pointer-events:none; }
+    .search { margin:0; padding-right:42px; min-height:46px; border-radius:14px; }
+    .search { padding-left:46px; }
+    .search::-webkit-search-cancel-button { -webkit-appearance:none; }
+    .search:focus { outline:2px solid rgba(var(--brand-rgb),.35); border-color:var(--brand); }
+    .search-clear { position:absolute; left:8px; top:50%; transform:translateY(-50%); width:30px; height:30px; border:0; border-radius:9px; color:var(--muted); background:transparent; font:inherit; font-size:21px; line-height:1; cursor:pointer; }
+    .search-clear:hover { color:var(--ink); background:var(--bg); }
+    .search-clear[hidden] { display:none; }
+    .sort-select { min-width:165px; border:1px solid var(--line); border-radius:13px; padding:0 12px; color:var(--ink); background:var(--card); font:inherit; font-size:12px; font-weight:700; }
+    .sort-select:focus { outline:2px solid var(--brand); border-color:transparent; }
+    .cats { gap:7px; margin:0 0 14px; overflow-x:auto; flex-wrap:nowrap; padding:2px 1px 7px; scrollbar-width:thin; }
+    .cat-pill { flex:none; padding:7px 14px; transition:transform .16s,background .16s,border-color .16s; }
+    .cat-pill:hover { transform:translateY(-1px); border-color:var(--brand); }
+    .cat-pill.active { box-shadow:0 5px 14px rgba(var(--brand-rgb),.2); }
+    #dealsToggle.is-active { color:#fff; background:#e11d48; border-color:#e11d48; }
+    .grid { gap:14px; }
+    .card { position:relative; border-color:var(--line); border-radius:18px; box-shadow:0 10px 26px rgba(15,23,42,.055); transition:transform .2s,border-color .2s,box-shadow .2s; }
+    .card:hover { transform:translateY(-4px); border-color:rgba(var(--brand-rgb),.38); box-shadow:0 18px 34px rgba(15,23,42,.12); }
+    .thumb { overflow:hidden; aspect-ratio:1 / .88; background:linear-gradient(145deg,rgba(var(--brand-rgb),.08),#f1f5f9); }
+    .thumb img { transition:transform .35s; }
+    .card:hover .thumb img { transform:scale(1.045); }
+    .badge { top:10px; right:10px; padding:4px 10px; box-shadow:0 5px 14px rgba(225,29,72,.22); }
+    .featured-badge { position:absolute; top:10px; left:10px; padding:4px 8px; border:1px solid rgba(255,255,255,.35); border-radius:999px; color:#fff; background:rgba(15,23,42,.72); font-size:9px; font-weight:800; backdrop-filter:blur(8px); }
+    .info { padding:13px; gap:7px; }
+    .name { font-size:14px; }
+    .desc { min-height:2.8em; }
+    .price { padding-top:6px; }
+    .now { font-size:17px; }
+    .btn { border-radius:12px; box-shadow:0 6px 16px rgba(var(--brand-rgb),.15); }
+    .btn:focus-visible, .cat-pill:focus-visible, .offer-button:focus-visible, .hero-link:focus-visible { outline:3px solid rgba(var(--brand-rgb),.45); outline-offset:2px; }
+    .btn.ghost { box-shadow:none; }
+    .empty { border:1px dashed var(--line); border-radius:18px; background:var(--card); }
+    .sheet { box-shadow:0 20px 70px rgba(0,0,0,.24); }
+    .booking-total { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:12px 0; padding:12px; border:1px solid rgba(var(--brand-rgb),.18); border-radius:13px; background:rgba(var(--brand-rgb),.06); font-size:12px; font-weight:800; }
+    .booking-total strong { color:var(--brand); font-size:15px; }
+    footer { max-width:1120px; margin:0 auto; border-top:1px solid var(--line); line-height:1.8; }
+    body.theme-dark .brand-mark, body.theme-dark .benefit { box-shadow:0 8px 24px rgba(0,0,0,.16); }
+    body.theme-dark .thumb { background:#1e293b; }
+    @media (max-width:639px) {
+      header { padding:11px 14px; }
+      .brand-mark { width:40px; height:40px; border-radius:13px; }
+      .brand-copy h1 { font-size:16px; }
+      .brand-copy p { font-size:10px; }
+      .store-status { gap:5px; padding:6px 8px; font-size:9px; }
+      main { padding:14px 12px 42px; }
+      .store-hero { min-height:205px; padding:20px 17px; border-radius:21px; background-position:58% center; }
+      .hero-copy > p { font-size:11px; }
+      .hero-link { margin-top:12px; padding:9px 13px; font-size:12px; }
+      .benefits { gap:7px; margin-bottom:19px; }
+      .benefit { flex-direction:column; align-items:flex-start; gap:6px; padding:10px 9px; border-radius:13px; }
+      .benefit-icon { width:30px; height:30px; border-radius:9px; font-size:14px; }
+      .benefit strong { font-size:10px; }
+      .benefit span { font-size:9px; }
+      .catalog-head h2 { font-size:17px; }
+      .shop-tools { grid-template-columns:1fr; }
+      .sort-select { width:100%; min-height:43px; }
+      .grid { gap:10px; }
+      .card { border-radius:15px; }
+      .info { padding:10px; }
+      .name { font-size:12px; }
+      .desc { font-size:10px; }
+      .now { font-size:14px; }
+      .info .btn { padding:9px 8px; font-size:12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior:auto !important; transition-duration:.01ms !important; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1 id="storeTitle">متجر القاعة</h1>
-    <p id="storeNote"></p>
+    <div class="store-topbar">
+      <div class="store-brand">
+        <div class="brand-mark"><img src="logo.svg" alt=""></div>
+        <div class="brand-copy">
+          <h1 id="storeTitle">متجر بور جم</h1>
+          <p id="storeNote">اختياراتك الرياضية من قاعتك المفضلة</p>
+        </div>
+      </div>
+      <span id="storeOpenStatus" class="store-status" role="status">المتجر مفتوح</span>
+    </div>
   </header>
   <div id="closedBanner" class="closed-banner">المتجر متوقف مؤقتاً عن استقبال الحجوزات الجديدة</div>
   <main>
-    <input id="search" class="search" type="search" placeholder="ابحث عن منتج...">
+    <section class="store-hero" aria-labelledby="storeHeroTitle">
+      <div class="hero-copy">
+        <span class="hero-eyebrow">🏋️ متجر بور جم</span>
+        <h2 id="storeHeroTitle">جهّز تمرينك،<br><span>والباقي علينا</span></h2>
+        <p>مكملات، مشروبات ومستلزمات رياضية مختارة — احجزها بسهولة واستلمها من القاعة.</p>
+        <a class="hero-link" href="#catalog">تسوّق المنتجات <span aria-hidden="true">←</span></a>
+      </div>
+    </section>
+
+    <section class="benefits" aria-label="مميزات المتجر">
+      <div class="benefit"><span class="benefit-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="4" y="5" width="16" height="16" rx="3"></rect><path d="M8 3v4m8-4v4M4 10h16m-11 5 2 2 4-4"></path></svg></span><div><strong>حجز سهل</strong><span>أكد طلبك خلال لحظات</span></div></div>
+      <div class="benefit"><span class="benefit-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle><path d="M8 3.5 9.5 2m5 0L16 3.5"></path></svg></span><div><strong>استلام من القاعة</strong><span>منتجاتك بانتظارك بالنادي</span></div></div>
+      <div class="benefit"><span class="benefit-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="M3 10h18m-13 5h3m5-2v4"></path></svg></span><div><strong>الدفع عند الاستلام</strong><span>بدون دفع إلكتروني مسبق</span></div></div>
+    </section>
+
+    <section id="offerBanner" class="offer-banner" aria-live="polite">
+      <div><p class="offer-title">🔥 عروض القاعة</p><p id="offerDetail" class="offer-detail"></p></div>
+      <button id="dealsToggle" class="offer-button" type="button" aria-pressed="false">شوف العروض</button>
+    </section>
+
+    <section id="catalog" aria-labelledby="catalogTitle">
+      <div class="catalog-head">
+        <div><h2 id="catalogTitle">تسوّق المنتجات</h2><p>اختار اللي تحتاجه وخلي حجزك علينا</p></div>
+        <span id="resultsCount" class="results-count" aria-live="polite"></span>
+      </div>
+    <div class="shop-tools">
+      <div role="search">
+        <div class="search-wrap">
+          <input id="search" class="search" type="search" aria-label="ابحث عن منتج أو قسم" aria-controls="grid" aria-keyshortcuts="/ Control+K Meta+K" maxlength="80" autocomplete="off" placeholder="اسم المنتج، القسم، أو كلمة من الوصف...">
+          <button id="clearSearch" class="search-clear" type="button" aria-label="مسح البحث" title="مسح البحث" hidden>×</button>
+        </div>
+      </div>
+      <select id="sortProducts" class="sort-select" aria-label="ترتيب المنتجات">
+        <option value="featured">الترتيب المقترح</option>
+        <option value="price-low">السعر: من الأقل للأعلى</option>
+        <option value="price-high">السعر: من الأعلى للأقل</option>
+        <option value="discount">أعلى خصم أولاً</option>
+      </select>
+    </div>
     <div id="catsBar" class="cats"></div>
     <div id="grid" class="grid"></div>
     <div id="empty" class="empty" style="display:none"></div>
+    </section>
   </main>
-  <footer>الحجز مجاني، وتدفع عند الاستلام من القاعة</footer>
+  <footer>متجر بور جم · احجز مجاناً، وادفع عند الاستلام من القاعة</footer>
 
   <div id="overlay" class="overlay">
     <div class="sheet" id="sheet"></div>

@@ -324,6 +324,7 @@
   };
 
   function injectSmartSidebarLinks() {
+    if (document.querySelector('[data-nav-key="smart-tools"]')) return;
     const nav = document.querySelector('#desktopSidebar nav');
     if (!nav || $('pgSmartToolsNav')) return;
     const sec = document.createElement('section');
