@@ -22,7 +22,6 @@
 
   <script src="storage-shim.js"></script>
   <link rel="stylesheet" href="dist/app.css">
-  <link rel="stylesheet" href="visual-refresh.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -116,10 +115,6 @@
 
   <!-- إشعارات علوية -->
   <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-auto md:right-6 md:w-96 z-50 flex flex-col gap-2 pointer-events-none"></div>
-  <div id="networkStatus" class="network-status hidden" role="status" aria-live="polite">
-    <i class="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i>
-    <span>غير متصل بالإنترنت — بياناتك المحلية متاحة</span>
-  </div>
 
   <!-- القائمة الجانبية الموحدة والمرتبة -->
   <div id="mobileMenuBackdrop" class="fixed inset-0 z-40 hidden bg-black/80 backdrop-blur-sm lg:hidden" onclick="closeMobileMenu()"></div>
@@ -188,7 +183,7 @@
       <section class="pg-nav-group">
         <h2 class="pg-nav-group__title"><i class="fa-solid fa-sliders"></i> القاعة والنظام</h2>
         <button data-nav-key="store-admin" onclick="openStoreAdmin?.(); closeMobileMenu();" class="sidebar-link">
-          <i class="fa-solid fa-store"></i><span>متجر بور جم</span>
+          <i class="fa-solid fa-store"></i><span>متجر القاعة</span>
         </button>
         <button onclick="pgOpenInventory?.(); closeMobileMenu();" class="sidebar-link">
           <i class="fa-solid fa-boxes-stacked"></i><span>المخزن والمبيعات</span>
@@ -277,9 +272,6 @@
           <button onclick="openMonthlyReportModal?.()" class="pg-btn pg-btn--ghost">
             <i class="fa-solid fa-file-lines text-amber-400"></i> التقرير الشهري
           </button>
-          <a id="pgPublicStoreLink" href="store.html?g=powergym-main" target="_blank" rel="noopener" class="pg-btn pg-btn--ghost">
-            <i class="fa-solid fa-store text-amber-400"></i> متجر بور جم
-          </a>
           <button onclick="openSmartWhatsAppCenter?.('soon')" class="pg-btn pg-btn--ghost">
             <i class="fa-brands fa-whatsapp text-emerald-400"></i> إشعارات واتساب
           </button>
@@ -714,45 +706,6 @@
               <span class="text-[11px] text-purple-300 font-bold block">صافي الأرباح الكلي</span>
               <span id="finNetProfitDisplay" class="text-xl font-black text-purple-300 mt-1 block">0 د.ع</span>
             </div>
-          </div>
-
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <section class="bg-slate-900/80 border border-amber-500/25 rounded-2xl p-4 space-y-3">
-              <div>
-                <h4 class="text-xs font-black text-amber-300"><i class="fa-solid fa-building ml-1"></i> مصاريف القاعة الشهرية</h4>
-                <p class="text-[10px] text-slate-400 mt-1">تُسجّل تلقائياً مرة واحدة لكل شهر وتُخصم من صافي الربح.</p>
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label for="finMonthlyRent" class="block text-[10px] font-bold text-slate-300 mb-1">إيجار المكان (د.ع/شهر)</label>
-                  <input id="finMonthlyRent" type="number" min="0" step="1000" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-                </div>
-                <div>
-                  <label for="finMonthlyElectricity" class="block text-[10px] font-bold text-slate-300 mb-1">الكهرباء (د.ع/شهر)</label>
-                  <input id="finMonthlyElectricity" type="number" min="0" step="1000" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-                </div>
-              </div>
-              <button onclick="saveMonthlyOperatingCosts()" class="rounded-xl bg-amber-500 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-400">حفظ المصاريف الشهرية</button>
-            </section>
-
-            <section class="bg-slate-900/80 border border-cyan-500/25 rounded-2xl p-4 space-y-3">
-              <div>
-                <h4 class="text-xs font-black text-cyan-300"><i class="fa-solid fa-user-clock ml-1"></i> يوميات المشرفين</h4>
-                <p class="text-[10px] text-slate-400 mt-1">سجّل دوام المشرف مرة باليوم؛ تُخصم أجرته اليومية تلقائياً من الصافي.</p>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-[1fr_150px_auto] gap-2 items-end">
-                <div>
-                  <label for="finSupervisorName" class="block text-[10px] font-bold text-slate-300 mb-1">اسم المشرف</label>
-                  <input id="finSupervisorName" maxlength="60" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-                </div>
-                <div>
-                  <label for="finSupervisorDailyRate" class="block text-[10px] font-bold text-slate-300 mb-1">الأجرة اليومية (د.ع)</label>
-                  <input id="finSupervisorDailyRate" type="number" min="1" step="500" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-                </div>
-                <button onclick="addFinanceSupervisor()" class="rounded-xl bg-cyan-500 px-3 py-2 text-xs font-black text-slate-950 hover:bg-cyan-400">إضافة مشرف</button>
-              </div>
-              <div id="finSupervisorsList" class="space-y-2 max-h-48 overflow-y-auto"></div>
-            </section>
           </div>
 
           <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">

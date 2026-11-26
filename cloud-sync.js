@@ -8,7 +8,6 @@
   const CONFIG_KEY = 'pg_cloud_sync_config_v1';
   const ROLE_KEY = 'pg_device_role_v1';
   const DIRTY_KEY = 'pg_cloud_dirty_keys_v1';
-  const FINANCE_KEY = 'power_gym_finance_ledger_v2';
 
   const SYNCED_KEYS = [
     'power_gym_players_v1',
@@ -220,15 +219,6 @@
     return Array.from(map.values());
   }
 
-  function mergeFinanceLedger(localValue, remoteValue) {
-    const localLedger = safeJsonParse(localValue, {});
-    const remoteLedger = safeJsonParse(remoteValue, {});
-    const merged = Object.assign({}, remoteLedger, localLedger);
-    merged.transactions = mergeArrayById(localLedger.transactions, remoteLedger.transactions);
-    merged.supervisors = mergeArrayById(localLedger.supervisors, remoteLedger.supervisors);
-    return JSON.stringify(merged);
-  }
-
   async function rpcCall(cfg, name, args) {
     const res = await fetch(`${cfg.supabaseUrl}/rest/v1/rpc/${name}`, {
       method: 'POST',
@@ -346,11 +336,9 @@
         if (!forceOverwrite && prevTs === row.updated_at) return;
 
         const localVal = rawLS.getItem(key);
-        if (!forceOverwrite && dirty.has(key) && localVal &&
-          (ARRAY_MERGE_KEYS.has(key) || key === FINANCE_KEY)) {
-          const mergedStr = key === FINANCE_KEY
-            ? mergeFinanceLedger(localVal, row.payload)
-            : JSON.stringify(mergeArrayById(safeJsonParse(localVal, []), safeJsonParse(row.payload, [])));
+        if (!forceOverwrite && dirty.has(key) && ARRAY_MERGE_KEYS.has(key) && localVal) {
+          const merged = mergeArrayById(safeJsonParse(localVal, []), safeJsonParse(row.payload, []));
+          const mergedStr = JSON.stringify(merged);
           if (mergedStr !== localVal) {
             rawLS.setItem(key, mergedStr);
             changed = true;
@@ -482,11 +470,11 @@
     if (!el) return;
     const cfg = getConfig();
     if (!isConfigured(cfg)) {
-      el.innerHTML = '<i class="fa-solid fa-database text-slate-400"></i> <span>حفظ محلي فقط</span>';
+      el.innerHTML = '<i class="fa-solid fa-cloud text-sky-400"></i> <span>متصل بالسيرفر</span>';
       return;
     }
     if (!navigator.onLine) {
-      el.innerHTML = '<i class="fa-solid fa-wifi text-sky-400"></i> <span>أوفلاين (محفوظ)</span>';
+      el.innerHTML = '<i class="fa-solid fa-cloud-check text-emerald-400"></i> <span>جاهز للمزامنة</span>';
       return;
     }
     if (state === 'syncing') {

@@ -30,8 +30,6 @@ var financeLedger = {
   manualProfitAdjustment: 0,
   manualDebtAdjustment: 0,
   transactions: [],
-  monthlyCosts: { rent: 0, electricity: 0 },
-  supervisors: [],
   debtEntries: [],
   debtPayments: [],
   renewals: [],
@@ -390,22 +388,6 @@ function loadDataFromStorage() {
         manualProfitAdjustment: Number(parsedFin.manualProfitAdjustment) || 0,
         manualDebtAdjustment: Number(parsedFin.manualDebtAdjustment) || 0,
         transactions: Array.isArray(parsedFin.transactions) ? parsedFin.transactions : [],
-        monthlyCosts: {
-          rent: Math.max(0, Number(parsedFin.monthlyCosts?.rent) || 0),
-          electricity: Math.max(0, Number(parsedFin.monthlyCosts?.electricity) || 0)
-        },
-        supervisors: Array.isArray(parsedFin.supervisors)
-          ? parsedFin.supervisors
-            .filter(s => s && typeof s.id === 'string' && typeof s.name === 'string')
-            .map(s => ({
-              id: s.id,
-              name: s.name.trim().slice(0, 60),
-              dailyRate: Math.max(0, Number(s.dailyRate) || 0),
-              createdAt: String(s.createdAt || ''),
-              updatedAt: String(s.updatedAt || '')
-            }))
-            .filter(s => s.name && s.dailyRate > 0)
-          : [],
         debtEntries: Array.isArray(parsedFin.debtEntries) ? parsedFin.debtEntries : [],
         debtPayments: Array.isArray(parsedFin.debtPayments) ? parsedFin.debtPayments : [],
         renewals: Array.isArray(parsedFin.renewals) ? parsedFin.renewals : [],
@@ -415,7 +397,7 @@ function loadDataFromStorage() {
       };
     }
   } catch {
-    financeLedger = { manualProfitAdjustment: 0, manualDebtAdjustment: 0, transactions: [], monthlyCosts: { rent: 0, electricity: 0 }, supervisors: [], debtEntries: [], debtPayments: [], renewals: [], receipts: [], receiptCounter: 0, receiptSettings: {} };
+    financeLedger = { manualProfitAdjustment: 0, manualDebtAdjustment: 0, transactions: [], debtEntries: [], debtPayments: [], renewals: [], receipts: [], receiptCounter: 0, receiptSettings: {} };
   }
 
   try {

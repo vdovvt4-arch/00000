@@ -3,51 +3,7 @@
 // Power Gym — Finance, Debts & Gym Customization (js/finance.js)
 // =========================================================
 
-function ensureMonthlyOperatingCosts() {
-  const month = getTodayDateString().slice(0, 7);
-  const monthlyCosts = financeLedger.monthlyCosts || { rent: 0, electricity: 0 };
-  financeLedger.monthlyCosts = monthlyCosts;
-  financeLedger.transactions = Array.isArray(financeLedger.transactions) ? financeLedger.transactions : [];
-  let changed = false;
-
-  [
-    { key: 'rent', label: 'إيجار القاعة' },
-    { key: 'electricity', label: 'كهرباء القاعة' }
-  ].forEach(cost => {
-    const amount = Math.max(0, Number(monthlyCosts[cost.key]) || 0);
-    const id = `tx_monthly_${cost.key}_${month}`;
-    const existing = financeLedger.transactions.find(tx => tx.id === id);
-    const updatedAt = new Date().toISOString();
-    if (amount > 0 && !existing) {
-      financeLedger.transactions.unshift({
-        id,
-        type: 'expense',
-        category: `monthly_${cost.key}`,
-        autoMonthly: true,
-        period: month,
-        amount,
-        title: `${cost.label} (${month})`,
-        description: `${cost.label} للشهر ${month}`,
-        date: getTodayDateString(),
-        createdAt: updatedAt,
-        updatedAt
-      });
-      changed = true;
-    } else if (amount > 0 && Number(existing.amount) !== amount) {
-      existing.amount = amount;
-      existing.updatedAt = updatedAt;
-      changed = true;
-    } else if (amount === 0 && existing && existing.autoMonthly) {
-      financeLedger.transactions = financeLedger.transactions.filter(tx => tx.id !== id);
-      changed = true;
-    }
-  });
-
-  if (changed) saveFinanceLedgerToStorage();
-}
-
 function calculateFinancialMetrics() {
-  ensureMonthlyOperatingCosts();
   let playersPaidTotal = 0;
   let playersDebtTotal = 0;
 
@@ -85,10 +41,6 @@ function calculateFinancialMetrics() {
 }
 
 function openFinanceModal(defaultTab = 'profits') {
-  financeLedger.monthlyCosts = financeLedger.monthlyCosts || { rent: 0, electricity: 0 };
-  financeLedger.supervisors = Array.isArray(financeLedger.supervisors) ? financeLedger.supervisors : [];
-  document.getElementById('finMonthlyRent').value = financeLedger.monthlyCosts.rent || 0;
-  document.getElementById('finMonthlyElectricity').value = financeLedger.monthlyCosts.electricity || 0;
   document.getElementById('finManualProfitInput').value = financeLedger.manualProfitAdjustment || 0;
   document.getElementById('finManualDebtInput').value = financeLedger.manualDebtAdjustment || 0;
   document.getElementById('finDebtDate').value = getTodayDateString();
@@ -105,7 +57,6 @@ function openFinanceModal(defaultTab = 'profits') {
   document.getElementById('priceMonth12').value = gymProfile.defaultPrices['12'] || 220000;
 
   renderFinanceSummary();
-  renderFinanceSupervisors();
   renderFinancePlayersList();
   switchFinanceTab(defaultTab);
   document.getElementById('financeModal').classList.remove('hidden');
@@ -157,140 +108,17 @@ function renderFinanceSummary() {
             ${tx.type === 'expense' ? 'مصروف ➖' : 'إيراد ➕'}
           </span>
           <span class="font-bold text-white">${escapeHtml(tx.title || tx.description || 'حركة مالية')}</span>
-          ${tx.autoMonthly ? '<span class="rounded bg-cyan-500/15 px-1.5 py-0.5 text-[9px] font-bold text-cyan-300">شهري تلقائي</span>' : ''}
           <span class="text-[10px] text-slate-500" dir="ltr">${escapeHtml(tx.date || '')}</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="font-black ${tx.type === 'expense' ? 'text-rose-400' : 'text-emerald-400'}">${Number(tx.amount).toLocaleString('en-US')} د.ع</span>
-          ${tx.autoMonthly
-            ? '<span class="p-1 text-slate-600" title="عدّل هذا المصروف من إعدادات المصاريف الشهرية"><i class="fa-solid fa-lock"></i></span>'
-            : `<button onclick="deleteFinanceTransaction('${sanitizeId(tx.id)}')" class="text-rose-400 hover:text-rose-300 p-1"><i class="fa-solid fa-trash-can"></i></button>`}
+          <button onclick="deleteFinanceTransaction('${sanitizeId(tx.id)}')" class="text-rose-400 hover:text-rose-300 p-1">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
         </div>
       </div>
     `).join('');
   }
-  renderFinanceSupervisors();
-}
-
-function saveMonthlyOperatingCosts() {
-  const rent = Number(document.getElementById('finMonthlyRent').value);
-  const electricity = Number(document.getElementById('finMonthlyElectricity').value);
-  if (![rent, electricity].every(value => Number.isFinite(value) && value >= 0)) {
-    showToast('أدخل مبالغ صحيحة وغير سالبة للإيجار والكهرباء.', 'warning');
-    return;
-  }
-  financeLedger.monthlyCosts = { rent, electricity };
-  saveFinanceLedgerToStorage();
-  renderFinanceSummary();
-  showToast('تم حفظ المصاريف الشهرية وتحديث صافي الأرباح.', 'success');
-}
-
-function renderFinanceSupervisors() {
-  const list = document.getElementById('finSupervisorsList');
-  if (!list) return;
-  const month = getTodayDateString().slice(0, 7);
-  const today = getTodayDateString();
-  const supervisors = Array.isArray(financeLedger.supervisors) ? financeLedger.supervisors : [];
-  const monthlyTransactions = (financeLedger.transactions || []).filter(tx =>
-    tx.category === 'supervisor_daily' && String(tx.date || '').slice(0, 7) === month
-  );
-
-  list.innerHTML = supervisors.map(supervisor => {
-    const days = monthlyTransactions.filter(tx => tx.supervisorId === supervisor.id);
-    const total = days.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-    const loggedToday = days.some(tx => tx.date === today);
-    return `
-      <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-950/70 p-2.5">
-        <div>
-          <p class="text-xs font-black text-white">${escapeHtml(supervisor.name)}</p>
-          <p class="text-[10px] text-slate-400">${Number(supervisor.dailyRate).toLocaleString('en-US')} د.ع/يوم · ${days.length} يوم هذا الشهر · مجموع ${total.toLocaleString('en-US')} د.ع</p>
-        </div>
-        <div class="flex flex-wrap gap-1.5">
-          <button onclick="recordFinanceSupervisorDay('${sanitizeId(supervisor.id)}')" ${loggedToday ? 'disabled' : ''} class="rounded-lg px-2.5 py-1.5 text-[10px] font-black ${loggedToday ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-500'}">${loggedToday ? 'دوام اليوم مسجّل' : 'تسجيل دوام اليوم'}</button>
-          <button onclick="editFinanceSupervisor('${sanitizeId(supervisor.id)}')" class="rounded-lg bg-slate-800 px-2.5 py-1.5 text-[10px] font-bold text-cyan-300">تعديل الأجر</button>
-          <button onclick="removeFinanceSupervisor('${sanitizeId(supervisor.id)}')" class="rounded-lg bg-rose-950/60 px-2.5 py-1.5 text-[10px] font-bold text-rose-300">إزالة</button>
-        </div>
-      </div>`;
-  }).join('') || '<p class="py-2 text-center text-[11px] text-slate-500">أضف المشرفين لتسجيل دوامهم اليومي.</p>';
-}
-
-function addFinanceSupervisor() {
-  const nameInput = document.getElementById('finSupervisorName');
-  const rateInput = document.getElementById('finSupervisorDailyRate');
-  const name = nameInput.value.trim();
-  const dailyRate = Number(rateInput.value);
-  if (!name || !Number.isFinite(dailyRate) || dailyRate <= 0) {
-    showToast('أدخل اسم المشرف وأجرته اليومية بشكل صحيح.', 'warning');
-    return;
-  }
-  const now = new Date().toISOString();
-  financeLedger.supervisors = Array.isArray(financeLedger.supervisors) ? financeLedger.supervisors : [];
-  financeLedger.supervisors.push({
-    id: 'sup_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-    name: name.slice(0, 60),
-    dailyRate,
-    createdAt: now,
-    updatedAt: now
-  });
-  saveFinanceLedgerToStorage();
-  nameInput.value = '';
-  rateInput.value = '';
-  renderFinanceSupervisors();
-  showToast('تمت إضافة المشرف وأجرته اليومية.', 'success');
-}
-
-function editFinanceSupervisor(supervisorId) {
-  const supervisor = (financeLedger.supervisors || []).find(item => item.id === supervisorId);
-  if (!supervisor) return;
-  const value = prompt(`الأجرة اليومية للمشرف ${supervisor.name}:`, String(supervisor.dailyRate));
-  if (value === null) return;
-  const dailyRate = Number(value);
-  if (!Number.isFinite(dailyRate) || dailyRate <= 0) {
-    showToast('الأجرة اليومية يجب أن تكون أكبر من صفر.', 'warning');
-    return;
-  }
-  supervisor.dailyRate = dailyRate;
-  supervisor.updatedAt = new Date().toISOString();
-  saveFinanceLedgerToStorage();
-  renderFinanceSupervisors();
-  showToast('تم تحديث الأجرة اليومية؛ الأيام المسجلة سابقاً تبقى على أجرتها الأصلية.', 'success');
-}
-
-function recordFinanceSupervisorDay(supervisorId) {
-  const supervisor = (financeLedger.supervisors || []).find(item => item.id === supervisorId);
-  if (!supervisor) return;
-  const date = getTodayDateString();
-  const id = `tx_supervisor_day_${supervisor.id}_${date}`;
-  financeLedger.transactions = Array.isArray(financeLedger.transactions) ? financeLedger.transactions : [];
-  if (financeLedger.transactions.some(tx => tx.id === id)) {
-    showToast('دوام هذا المشرف مسجل لهذا اليوم مسبقاً.', 'info');
-    return;
-  }
-  financeLedger.transactions.unshift({
-    id,
-    type: 'expense',
-    category: 'supervisor_daily',
-    supervisorId: supervisor.id,
-    supervisorName: supervisor.name,
-    dailyRate: Number(supervisor.dailyRate),
-    amount: Number(supervisor.dailyRate),
-    title: `يومية المشرف: ${supervisor.name}`,
-    description: `أجرة دوام ${supervisor.name} بتاريخ ${date}`,
-    date,
-    createdAt: new Date().toISOString()
-  });
-  saveFinanceLedgerToStorage();
-  renderFinanceSummary();
-  showToast(`تم تسجيل يومية ${supervisor.name} وخصم ${Number(supervisor.dailyRate).toLocaleString('en-US')} د.ع من صافي الربح.`, 'success');
-}
-
-function removeFinanceSupervisor(supervisorId) {
-  const supervisor = (financeLedger.supervisors || []).find(item => item.id === supervisorId);
-  if (!supervisor || !confirm(`إزالة ${supervisor.name} من قائمة المشرفين؟ تبقى اليوميات السابقة ضمن المصاريف.`)) return;
-  financeLedger.supervisors = financeLedger.supervisors.filter(item => item.id !== supervisorId);
-  saveFinanceLedgerToStorage();
-  renderFinanceSupervisors();
-  showToast('تمت إزالة المشرف من القائمة مع الاحتفاظ بيومياته السابقة.', 'info');
 }
 
 function saveManualFinanceAdjustments() {

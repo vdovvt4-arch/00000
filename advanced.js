@@ -150,31 +150,14 @@
     sales = read(KEYS.sales);
   }
 
-  function recordSaleInternal(item, qtySold, sourceLabel, saleId, salePrice) {
-    if (saleId) {
-      const existingSale = sales.find(s => s.id === saleId);
-      const existingIncome = typeof financeLedger !== 'undefined' && Array.isArray(financeLedger.transactions)
-        ? financeLedger.transactions.find(tx => tx.id === `tx_sale_${saleId}`)
-        : null;
-      if (existingSale || existingIncome) {
-        const existingCost = existingIncome && financeLedger.transactions.find(tx => tx.id === `tx_cost_${saleId}`);
-        const sale = existingSale || {
-          id: saleId,
-          total: Number(existingIncome.amount) || 0,
-          costTotal: Number(existingCost && existingCost.amount) || 0,
-          profit: (Number(existingIncome.amount) || 0) - (Number(existingCost && existingCost.amount) || 0)
-        };
-        return { sale, remainingQty: item.qty, duplicate: true };
-      }
-    }
+  function recordSaleInternal(item, qtySold, sourceLabel) {
     const q = Math.max(1, Number(qtySold) || 1);
     item.qty = Math.max(0, (Number(item.qty) || 0) - q);
-    const unitPrice = Number.isFinite(Number(salePrice)) ? Math.max(0, Number(salePrice)) : (Number(item.price) || 0);
-    const total = q * unitPrice;
+    const total = q * (Number(item.price) || 0);
     const costTotal = q * (Number(item.cost) || 0);
     const profit = total - costTotal;
     const s = {
-      id: saleId || ('sale_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5)),
+      id: 'sale_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
       itemId: item.id,
       name: item.name,
       qty: q,
@@ -192,32 +175,15 @@
 
     if (typeof financeLedger !== 'undefined') {
       financeLedger.transactions = Array.isArray(financeLedger.transactions) ? financeLedger.transactions : [];
-      const createdAt = new Date().toISOString();
-      const addTransaction = tx => {
-        if (!financeLedger.transactions.some(existing => existing.id === tx.id)) {
-          financeLedger.transactions.unshift(tx);
-        }
-      };
-      addTransaction({
-        id: `tx_sale_${s.id}`,
+      financeLedger.transactions.unshift({
+        id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
         type: 'income',
         amount: total,
         title: `${sourceLabel || 'مبيعات مخزن'}: ${item.name} × ${q}`,
         description: `${sourceLabel || 'مبيعات مخزن'}: ${item.name} × ${q}`,
         date: today(),
-        createdAt
+        createdAt: new Date().toISOString()
       });
-      if (costTotal > 0) {
-        addTransaction({
-          id: `tx_cost_${s.id}`,
-          type: 'expense',
-          amount: costTotal,
-          title: `تكلفة ${sourceLabel || 'مبيعات مخزن'}: ${item.name} × ${q}`,
-          description: `تكلفة ${sourceLabel || 'مبيعات مخزن'}: ${item.name} × ${q}`,
-          date: today(),
-          createdAt
-        });
-      }
       if (typeof saveFinanceLedgerToStorage === 'function') saveFinanceLedgerToStorage();
     }
     return { sale: s, remainingQty: item.qty };
@@ -251,7 +217,6 @@
         <td class="p-2.5">
           <div class="flex flex-wrap gap-1.5">
             <button onclick="pgSellItem(${i})" class="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white">بيع</button>
-            <button onclick="pgSetItemCost(${i})" class="rounded-lg bg-cyan-900/60 hover:bg-cyan-800 px-2.5 py-1 text-xs font-bold text-cyan-200">${Number(p.cost) > 0 ? 'تعديل التكلفة' : 'إضافة التكلفة'}</button>
             <button onclick="pgPushItemToStore(${i})" class="rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 px-2.5 py-1 text-xs font-bold text-amber-300" title="نشر أو تحديث في المتجر">
               <i class="fa-solid fa-store ml-1"></i>${p.storeProductId ? 'تحديث المتجر' : 'نشر بالمتجر'}
             </button>
@@ -300,7 +265,7 @@
         <input id="pgItemPrice" required type="number" min="0" placeholder="سعر البيع *" class="rounded-xl bg-zinc-950 border border-zinc-700 p-2.5 text-xs text-white"/>
         <label class="col-span-2 md:col-span-4 flex items-center gap-2 text-xs font-bold text-zinc-300 cursor-pointer px-1">
           <input id="pgItemPublishStore" type="checkbox" checked class="accent-amber-400 w-4 h-4">
-          <span>نشر المنتج في متجر بور جم تلقائياً (يتطلب تسجيل دخول المتجر)</span>
+          <span>نشر المنتج في متجر القاعة تلقائياً (يتطلب تسجيل دخول المتجر)</span>
         </label>
         <button class="col-span-2 rounded-xl gold-gradient py-2.5 text-xs font-black">إضافة للمخزن</button>
       </form>
@@ -352,23 +317,6 @@
       write(KEYS.inventory, inventory);
       renderInventory();
     }
-  };
-
-  window.pgSetItemCost = i => {
-    refreshInventoryCache();
-    const item = inventory[i];
-    if (!item) return;
-    const value = prompt(`سعر شراء الوحدة من ${item.name} (د.ع):`, String(Number(item.cost) || 0));
-    if (value === null) return;
-    const cost = Number(value);
-    if (!Number.isFinite(cost) || cost < 0) {
-      showToast?.('أدخل تكلفة صحيحة وغير سالبة.', 'warning');
-      return;
-    }
-    item.cost = cost;
-    write(KEYS.inventory, inventory);
-    renderInventory();
-    showToast?.('تم تحديث تكلفة المنتج. ستُستخدم في حساب صافي ربح المبيعات القادمة.', 'success');
   };
 
   window.pgDeleteItem = i => {
@@ -423,42 +371,13 @@
       write(KEYS.inventory, inventory);
       return it;
     },
-    deductOnStoreDelivery: (productId, productName, qtyDelivered, reservationId, salePrice) => {
+    deductOnStoreDelivery: (productId, productName, qtyDelivered) => {
       refreshInventoryCache();
       const it = inventory.find(x => x.storeProductId === productId || x.name.trim() === String(productName || '').trim());
-      const saleId = reservationId ? `sale_store_${reservationId}` : undefined;
-      const priorSale = saleId && sales.find(s => s.id === saleId);
-      if (priorSale) {
-        return {
-          matched: Boolean(it),
-          recorded: false,
-          duplicate: true,
-          outOfStock: Boolean(it && it.qty <= 0),
-          remainingQty: it ? it.qty : 0,
-          total: priorSale.total,
-          costTotal: priorSale.costTotal,
-          profit: priorSale.profit,
-          costKnown: Boolean(it && Number(it.cost) > 0)
-        };
-      }
+      if (!it) return { matched: false, outOfStock: false };
       const q = Math.max(1, Number(qtyDelivered) || 1);
-      const price = Number.isFinite(Number(salePrice)) && Number(salePrice) >= 0
-        ? Number(salePrice)
-        : (it ? Number(it.price) || 0 : NaN);
-      if (!Number.isFinite(price)) return { matched: Boolean(it), recorded: false, reason: 'price_unavailable' };
-      const saleItem = it || { id: productId || saleId, name: productName || 'منتج المتجر', qty: 0, cost: 0, price };
-      const res = recordSaleInternal(saleItem, q, 'بيع من المتجر', saleId, price);
-      return {
-        matched: Boolean(it),
-        recorded: !res.duplicate,
-        duplicate: Boolean(res.duplicate),
-        outOfStock: Boolean(it && res.remainingQty <= 0),
-        remainingQty: res.remainingQty,
-        total: res.sale.total,
-        costTotal: res.sale.costTotal,
-        profit: res.sale.profit,
-        costKnown: Boolean(it && Number(it.cost) > 0)
-      };
+      const res = recordSaleInternal(it, q, 'بيع من المتجر');
+      return { matched: true, outOfStock: res.remainingQty <= 0, remainingQty: res.remainingQty, total: res.sale.total };
     }
   };
 

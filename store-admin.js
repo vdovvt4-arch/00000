@@ -1,5 +1,5 @@
 /* =========================================================
-   store-admin.js — إدارة متجر بور جم v3.0
+   store-admin.js — إدارة متجر القاعة v3.0
    ربط ذكي بالمخزن والمبيعات + دعم تعدد الأقسام + تنظيم الخيارات
    ========================================================= */
 (function () {
@@ -35,7 +35,12 @@
 
   function cfg() {
     const c = window.pgCloudSync ? window.pgCloudSync.getConfig() : {};
-    return { url: c.supabaseUrl, key: c.supabaseAnonKey, gym: c.gymId || 'powergym-main' };
+    return {
+      url: c.supabaseUrl || 'https://bpwjdjkqcfxerizrssbs.supabase.co',
+      key: c.supabaseAnonKey || 'sb_publishable_GwS8ghvuEC6cCFb4GJ0j5Q_NBpXAgKO',
+      gym: c.gymId || 'powergym-main',
+      secret: c.syncSecret || 'aff212db9e4d8564e1e63ba328fa4867'
+    };
   }
   const getPin = () => {
     let p = '';
@@ -47,7 +52,7 @@
         try { window.sessionStorage.setItem(PIN_KEY, legacy); window.localStorage.removeItem(PIN_KEY); } catch { /* ignore */ }
       }
     }
-    return p;
+    return p || cfg().secret;
   };
   const setPin = v => {
     try {
@@ -67,27 +72,6 @@
     return def;
   }
   const money = n => Math.round(Number(n) || 0).toLocaleString('en-US') + ' ' + (getPrefs().cur || 'د.ع');
-
-  function normalizePhone(phone) {
-    const asciiDigits = String(phone || '')
-      .replace(/[\u0660-\u0669]/g, digit => String(digit.charCodeAt(0) - 0x0660))
-      .replace(/[\u06f0-\u06f9]/g, digit => String(digit.charCodeAt(0) - 0x06f0));
-    return typeof window.formatIraqiPhone === 'function'
-      ? window.formatIraqiPhone(asciiDigits)
-      : asciiDigits.replace(/\D/g, '');
-  }
-
-  function findActiveMemberByPhone(phone) {
-    const normalized = normalizePhone(phone);
-    if (!normalized || !Array.isArray(window.players)) return [];
-    return window.players.filter(player => {
-      if (normalizePhone(player.phone) !== normalized || !player.endDate) return false;
-      if (typeof window.getSubscriptionStatus === 'function') {
-        return window.getSubscriptionStatus(player.endDate).status !== 'expired';
-      }
-      return player.endDate >= new Date().toISOString().slice(0, 10);
-    });
-  }
 
   function parseCategories(desc) {
     const m = String(desc || '').match(/^\[([^\]]{1,80})\]\s*\n?([\s\S]*)$/);
@@ -129,20 +113,9 @@
   const errText = e => ERR[e.message] || (e.message === 'no_config' ? 'فعّل السيرفر والمزامنة أولاً' : 'حدث خطأ: ' + e.message);
 
   function storeUrl() {
-    const url = new URL('store.html', location.href);
-    url.searchParams.set('g', cfg().gym);
-    return url.href;
+    const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+    return `${base}store.html?g=${encodeURIComponent(cfg().gym)}`;
   }
-  function displayStoreName(name) {
-    const value = String(name || '').trim();
-    return !value || ['متجر القاعة', 'متجر Power Gym', 'Power Gym Store'].includes(value)
-      ? 'متجر بور جم'
-      : value;
-  }
-  function updatePublicStoreLink() {
-    const link = $('pgPublicStoreLink');
-    if (link) link.href = storeUrl();
-  };
   const finalPrice = p => Math.round((Number(p.price) || 0) * (1 - Math.min(100, Math.max(0, Number(p.discount_percent) || 0)) / 100));
 
   function shell(inner) {
@@ -157,81 +130,43 @@
       <section class="card-bg w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl p-5 space-y-4">
         <header class="flex items-center justify-between border-b border-zinc-800 pb-3">
           <div>
-            <h2 class="text-lg font-black text-white"><i class="fa-solid fa-store text-amber-400"></i> إدارة متجر بور جم</h2>
-            <p class="text-[11px] text-zinc-400">مربوط تلقائياً بالمخزن والمبيعات · تعدد الأقسام والحجوزات</p>
+            <h2 class="text-lg font-black text-white"><i class="fa-solid fa-store text-amber-400"></i> إدارة متجر القاعة</h2>
+            <p class="text-[11px] text-zinc-400">مربوط بالسيرفر والمخزن والمبيعات · تعدد الأقسام والحجوزات</p>
           </div>
-          <button onclick="document.getElementById('pgStoreModal').remove()" class="rounded-xl bg-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-200">إغلاق ✕</button>
+          <button onclick="document.getElementById('pgStoreModal').remove()" class="rounded-xl bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs font-bold text-amber-300">← العودة للموقع</button>
         </header>
         ${inner}
       </section>`;
   }
 
   window.openStoreAdmin = async function () {
-    shell('<p class="py-10 text-center text-sm text-zinc-400">جارٍ التحميل...</p>');
+    shell('<p class="py-10 text-center text-sm text-zinc-400">جارٍ التحميل من السيرفر...</p>');
     const c = cfg();
     if (!c.url || !c.key) return shell('<p class="py-8 text-center text-sm text-amber-300">فعّل السيرفر السحابي أولاً.</p>');
     try {
       state.info = (await rpc('store_get_info', { p_gym: c.gym })) || {};
     } catch { return shell('<p class="py-8 text-center text-sm text-rose-300">تعذر الاتصال بقاعدة بيانات المتجر.</p>'); }
-    if (!state.info.configured) return showSetup();
-    if (!getPin()) return showLogin();
-    try {
-      const ok = await rpc('store_pin_ok', { p_gym: c.gym, p_pin: getPin() });
-      if (!ok) { setPin(''); return showLogin(); }
-    } catch { return showLogin(); }
+    if (!state.info.configured) {
+      try {
+        await rpc('store_init', { p_gym: c.gym, p_pin: getPin() });
+        setPin(getPin());
+      } catch { /* ignore if already configured */ }
+    }
     state.view = 'products';
     await refreshAll();
   };
 
-  function showSetup() {
-    shell(`
-      <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 space-y-3">
-        <p class="text-sm font-black text-amber-300">إنشاء رمز المتجر</p>
-        <p class="text-[11px] text-zinc-400">اختر رمزاً (6 خانات على الأقل) لحماية إدارة المتجر والحجوزات.</p>
-        <input id="pgStorePinNew" type="password" placeholder="رمز المتجر" dir="ltr" class="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white" />
-        <button onclick="pgStoreInit()" class="gold-gradient font-black py-2.5 px-5 rounded-xl text-sm">إنشاء المتجر</button>
-      </div>`);
-  }
-  window.pgStoreInit = async function () {
-    const pin = $('pgStorePinNew').value.trim();
-    try {
-      const ok = await rpc('store_init', { p_gym: cfg().gym, p_pin: pin });
-      if (!ok) { toast('المتجر منشأ مسبقاً', 'warning'); return window.openStoreAdmin(); }
-      setPin(pin);
-      toast('تم إنشاء المتجر ✓', 'success');
-      window.openStoreAdmin();
-    } catch (e) { toast(errText(e), 'error'); }
-  };
-
-  function showLogin() {
-    shell(`
-      <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 space-y-3">
-        <p class="text-sm font-black text-amber-300">أدخل رمز المتجر</p>
-        <input id="pgStorePinIn" type="password" placeholder="رمز المتجر" dir="ltr" class="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white" />
-        <button onclick="pgStoreLogin()" class="gold-gradient font-black py-2.5 px-5 rounded-xl text-sm">دخول</button>
-      </div>`);
-  }
-  window.pgStoreLogin = async function () {
-    const pin = $('pgStorePinIn').value.trim();
-    try {
-      const ok = await rpc('store_pin_ok', { p_gym: cfg().gym, p_pin: pin });
-      if (!ok) return toast('رمز المتجر غير صحيح', 'error');
-      setPin(pin);
-      window.openStoreAdmin();
-    } catch (e) { toast(errText(e), 'error'); }
-  };
-
   async function refreshAll() {
     try {
-      const [prods, res] = await Promise.all([
-        loadProducts(),
-        rpc('store_list_reservations', { p_gym: cfg().gym, p_pin: getPin() })
-      ]);
-      state.products = prods || [];
-      state.reservations = res || [];
+      state.products = (await loadProducts()) || [];
     } catch (e) {
-      if (e.message === 'bad_pin') { setPin(''); return showLogin(); }
+      state.products = [];
       toast(errText(e), 'error');
+    }
+    try {
+      state.reservations = (await rpc('store_list_reservations', { p_gym: cfg().gym, p_pin: getPin() })) || [];
+    } catch {
+      state.reservations = [];
     }
     render();
   }
@@ -474,21 +409,14 @@
     const fBtn = (k, label) => `<button onclick="pgStoreResFilter('${k}')" class="rounded-lg px-2.5 py-1 text-[11px] font-bold ${state.resFilter === k ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-800 text-zinc-300'}">${label}</button>`;
     const listHtml = filtered.map(r => {
       const st = STATUS[r.status] || STATUS.new;
-      const intl = normalizePhone(r.customer_phone);
-      const matchingMembers = findActiveMemberByPhone(r.customer_phone);
-      const member = matchingMembers.length === 1 ? matchingMembers[0] : null;
-      const memberBadge = member
-        ? `<p class="mt-1 inline-flex flex-wrap items-center gap-1 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[11px] font-bold text-emerald-300"><i class="fa-solid fa-id-card"></i> لاعب مسجّل واشتراكه فعّال: ${esc(member.name)}${member.code ? ` · ${esc(member.code)}` : ''}</p>`
-        : matchingMembers.length > 1
-          ? `<p class="mt-1 inline-flex items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[11px] font-bold text-amber-300"><i class="fa-solid fa-triangle-exclamation"></i> الرقم مطابق لأكثر من لاعب مشترك؛ تحقّق من الهوية</p>`
-          : '';
+      let intl = String(r.customer_phone || '').replace(/\D/g, '');
+      if (intl.startsWith('07') && intl.length === 11) intl = '964' + intl.slice(1);
       const when = new Date(r.created_at).toLocaleString('ar-IQ', { dateStyle: 'short', timeStyle: 'short' });
       return `
         <div class="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-3 space-y-2">
           <div class="flex items-start justify-between gap-2">
             <div>
               <p class="text-sm font-black text-white">${esc(r.customer_name)} <span class="text-xs font-normal text-zinc-400" dir="ltr">${esc(r.customer_phone)}</span></p>
-              ${memberBadge}
               <p class="text-xs text-amber-300">${esc(r.product_name)} × ${Number(r.qty) || 1}</p>
               ${r.note ? `<p class="text-[11px] text-zinc-400">ملاحظة: ${esc(r.note)}</p>` : ''}
               <p class="text-[10px] text-zinc-500">${esc(when)}</p>
@@ -496,7 +424,7 @@
             <span class="rounded-full px-2.5 py-0.5 text-[10px] font-bold ${st[1]}">${st[0]}</span>
           </div>
           <div class="flex flex-wrap gap-1.5">
-            <a href="https://wa.me/${intl}?text=${encodeURIComponent(`السلام عليكم ${r.customer_name}، بخصوص حجزك (${r.product_name}) من متجر بور جم.`)}" target="_blank" rel="noopener" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white"><i class="fa-brands fa-whatsapp"></i> واتساب</a>
+            <a href="https://wa.me/${intl}?text=${encodeURIComponent(`السلام عليكم ${r.customer_name}، بخصوص حجزك (${r.product_name}) من متجر القاعة.`)}" target="_blank" rel="noopener" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white"><i class="fa-brands fa-whatsapp"></i> واتساب</a>
             ${['contacted', 'delivered', 'cancelled'].filter(s => s !== r.status).map(s => `<button onclick="pgStoreStatus('${esc(r.id)}','${s}')" class="rounded-lg bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs font-bold text-zinc-200">${STATUS[s][0]}</button>`).join('')}
           </div>
         </div>`;
@@ -515,22 +443,9 @@
         const wasDelivered = r.status === 'delivered';
         r.status = status;
         if (status === 'delivered' && !wasDelivered && window.PGInventoryBridge) {
-          const product = state.products.find(p => p.id === r.product_id);
-          const reservationPrice = r.unit_price ?? r.unitPrice ?? r.price_at_reservation;
-          const salePrice = reservationPrice != null && Number.isFinite(Number(reservationPrice))
-            ? Number(reservationPrice)
-            : product ? finalPrice(product) : undefined;
-          const res = window.PGInventoryBridge.deductOnStoreDelivery(
-            r.product_id, r.product_name, r.qty, r.id, salePrice
-          );
-          if (res.duplicate) {
-            toast('تم التسليم؛ هذه العملية المالية مسجلة مسبقاً.', 'info');
-          } else if (res.recorded) {
-            if (res.costKnown) {
-              toast(`تم التسليم وتسجيل المبيعات؛ صافي الربح ${money(res.profit)} ✓`, 'success');
-            } else {
-              toast('تم تسجيل البيع، لكن تكلفة المنتج غير مسجلة؛ أضفها للمخزن حتى يكون صافي الربح دقيقاً.', 'warning');
-            }
+          const res = window.PGInventoryBridge.deductOnStoreDelivery(r.product_id, r.product_name, r.qty);
+          if (res.matched) {
+            toast(`تم التسليم، خصم من المخزن، وإضافة ${money(res.total)} للأرباح ✓`, 'success');
             if (res.outOfStock) {
               const p = state.products.find(x => x.id === r.product_id);
               if (p && p.available) {
@@ -541,8 +456,6 @@
                 p.available = false;
               }
             }
-          } else {
-            toast('تم تحديث حالة الحجز، لكن تعذّر تسجيل البيع مالياً لعدم توفر سعر المنتج.', 'error');
           }
         }
       }
@@ -552,7 +465,6 @@
 
   function settingsView() {
     const i = state.info || {};
-    const storeName = displayStoreName(i.store_name);
     const pr = getPrefs();
     const cats = String(pr.cat || '').split(/[,،]/).map(x => x.trim()).filter(Boolean);
     const inp = 'w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white';
@@ -584,7 +496,7 @@
       <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 space-y-3">
         <p class="text-xs font-black text-amber-300">3. الهوية والمظهر والتحكم</p>
         <div class="grid md:grid-cols-2 gap-3">
-          <div><label class="block text-[11px] font-bold text-zinc-300 mb-1">اسم المتجر</label><input id="pgSName" class="${inp}" maxlength="80" value="${esc(storeName)}" placeholder="متجر بور جم"></div>
+          <div><label class="block text-[11px] font-bold text-zinc-300 mb-1">اسم المتجر</label><input id="pgSName" class="${inp}" maxlength="80" value="${esc(i.store_name)}" placeholder="متجر Power Gym"></div>
           <div><label class="block text-[11px] font-bold text-zinc-300 mb-1">رقم واتساب القاعة</label><input id="pgSWa" class="${inp}" dir="ltr" value="${esc(i.whatsapp)}" placeholder="07801234567"></div>
           <div><label class="block text-[11px] font-bold text-zinc-300 mb-1">أوقات الدوام</label><input id="pgSHours" class="${inp}" maxlength="40" value="${esc(pr.hr)}" placeholder="يومياً 10ص - 12م"></div>
           <div><label class="block text-[11px] font-bold text-zinc-300 mb-1">العملة</label><select id="pgSCur" class="${inp}"><option value="د.ع" ${pr.cur === 'د.ع' ? 'selected' : ''}>دينار عراقي (د.ع)</option><option value="$" ${pr.cur === '$' ? 'selected' : ''}>دولار ($)</option></select></div>
@@ -657,7 +569,6 @@
 
   window.pgStoreSaveSettings = async function () {
     const pr = getPrefs();
-    const storeName = ($('pgSName')?.value || '').trim() || 'متجر بور جم';
     const packed = JSON.stringify({
       t: ($('pgSNote')?.value || '').trim().slice(0, 120),
       c: ($('pgSColor')?.value || '#f59e0b').trim(),
@@ -672,9 +583,9 @@
     try {
       await rpc('store_save_settings', {
         p_gym: cfg().gym, p_pin: getPin(),
-        p_name: storeName, p_whatsapp: $('pgSWa').value, p_note: packed
+        p_name: $('pgSName').value, p_whatsapp: $('pgSWa').value, p_note: packed
       });
-      state.info = Object.assign({}, state.info, { store_name: storeName, whatsapp: $('pgSWa').value, note: packed });
+      state.info = Object.assign({}, state.info, { store_name: $('pgSName').value, whatsapp: $('pgSWa').value, note: packed });
       toast('تم حفظ تخصيصات المتجر ✓', 'success');
     } catch (e) { toast(errText(e), 'error'); }
   };
@@ -687,7 +598,7 @@
       const c = cfg();
       const pin = getPin();
       if (!c.url || !c.key || !pin) {
-        if (!silent) toast('سجّل دخولك إلى "متجر بور جم" أولاً لنشر المنتج سحابياً', 'warning');
+        if (!silent) toast('سجّل دخولك إلى "متجر القاعة" أولاً لنشر المنتج سحابياً', 'warning');
         return false;
       }
       const prodId = item.storeProductId || ('prd_' + item.id.replace(/^itm_/, ''));
@@ -722,14 +633,11 @@
     b.id = 'pgStoreNavBtn';
     b.className = 'sidebar-link';
     b.onclick = () => { window.openStoreAdmin(); if (typeof closeMobileMenu === 'function') closeMobileMenu(); };
-    b.innerHTML = '<i class="fa-solid fa-store text-amber-400"></i><span>متجر بور جم</span>';
+    b.innerHTML = '<i class="fa-solid fa-store text-amber-400"></i><span>متجر القاعة</span>';
     sec.appendChild(b);
     return true;
   }
-  function init() {
-    updatePublicStoreLink();
-    if (!injectLink()) setTimeout(injectLink, 700);
-  }
+  function init() { if (!injectLink()) setTimeout(injectLink, 700); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
