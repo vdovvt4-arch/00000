@@ -63,7 +63,14 @@
   };
 
   function getPrefs() {
-    const def = { t: '', c: '#f59e0b', bg: 'dark', open: 1, so: 1, nt: 1, hr: '', cur: 'د.ع', cat: '' };
+    const def = {
+      t: '', c: '#f59e0b', bg: 'dark', open: 1, so: 1, nt: 1, hr: '', cur: 'د.ع', cat: '',
+      promoOn: 1, promoSpd: 4,
+      promos: [
+        { badge: 'عرض خاص', title: 'أقوى المكملات والملابس الرياضية متوفرة الآن', sub: 'احجز طلبك أونلاين واستلم من القاعة مباشرة', color: '#f59e0b' },
+        { badge: 'تنبيه القاعة', title: 'خصومات حصرية لمشتركي Power Gym', sub: 'تابع العروض اليومية المتجددة داخل المتجر', color: '#0891b2' }
+      ]
+    };
     const s = String((state.info && state.info.note) || '').trim();
     if (s.startsWith('{')) {
       try { return Object.assign(def, JSON.parse(s)); } catch { /* ignore */ }
@@ -524,9 +531,49 @@
           <label class="flex items-center gap-2"><input id="pgSSold" type="checkbox" ${Number(pr.so) !== 0 ? 'checked' : ''} class="accent-amber-400"> إظهار المنتهية</label>
           <label class="flex items-center gap-2"><input id="pgSNt" type="checkbox" ${Number(pr.nt) !== 0 ? 'checked' : ''} class="accent-amber-400"> ملاحظة الزبون</label>
         </div>
-        <button onclick="pgStoreSaveSettings()" class="gold-gradient font-black py-2.5 px-5 rounded-xl text-sm">حفظ كل التخصيصات</button>
       </div>
-      <button onclick="pgStoreLogout()" class="text-xs font-bold text-rose-300">تسجيل خروج من المتجر على هذا الجهاز</button>`;
+
+      <div class="rounded-2xl border border-amber-500/25 bg-zinc-900/70 p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-xs font-black text-amber-300"><i class="fa-solid fa-bullhorn ml-1"></i> 4. لوحة الإعلانات والعروض المتحركة</p>
+          <div class="flex items-center gap-3 text-xs text-zinc-200">
+            <label class="flex items-center gap-1.5"><input id="pgSPromoOn" type="checkbox" ${Number(pr.promoOn) !== 0 ? 'checked' : ''} class="accent-amber-400"> تفعيل اللوحة</label>
+            <select id="pgSPromoSpd" class="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-[11px] text-white">
+              <option value="3" ${Number(pr.promoSpd) === 3 ? 'selected' : ''}>سريع (3 ثوانٍ)</option>
+              <option value="4" ${Number(pr.promoSpd) === 4 || !pr.promoSpd ? 'selected' : ''}>متوسط (4 ثوانٍ)</option>
+              <option value="6" ${Number(pr.promoSpd) === 6 ? 'selected' : ''}>هادئ (6 ثوانٍ)</option>
+            </select>
+          </div>
+        </div>
+        <div class="space-y-2">
+          ${(Array.isArray(pr.promos) ? pr.promos : []).map((pm, idx) => `
+            <div class="flex items-center justify-between gap-2 rounded-xl border border-zinc-800 bg-zinc-950/80 p-2.5">
+              <div class="min-w-0 flex-1">
+                <span class="inline-block rounded-full px-2 py-0.5 text-[10px] font-black text-white mb-0.5" style="background:${esc(pm.color || '#f59e0b')}">${esc(pm.badge || 'عرض')}</span>
+                <p class="truncate text-xs font-bold text-white">${esc(pm.title)}</p>
+                ${pm.sub ? `<p class="truncate text-[10px] text-zinc-400">${esc(pm.sub)}</p>` : ''}
+              </div>
+              <button type="button" onclick="pgStoreRemovePromo(${idx})" class="rounded-lg bg-rose-900/50 hover:bg-rose-900 px-2.5 py-1 text-[11px] font-bold text-rose-200">حذف</button>
+            </div>`).join('') || '<p class="text-[11px] text-zinc-500">لا توجد عروض مضافة حالياً.</p>'}
+        </div>
+        <div class="grid md:grid-cols-3 gap-2 pt-1">
+          <input id="pgPromoBadge" class="${inp}" maxlength="20" placeholder="الشارة (مثل: عرض خاص)">
+          <input id="pgPromoTitle" class="${inp} md:col-span-2" maxlength="80" placeholder="عنوان العرض أو الإعلان الرئيسي...">
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <input id="pgPromoSub" class="${inp} flex-1 min-w-[180px]" maxlength="90" placeholder="تفاصيل إضافية (اختياري)...">
+          <select id="pgPromoColor" class="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white">
+            <option value="#f59e0b">ذهبي</option>
+            <option value="#dc2626">أحمر</option>
+            <option value="#059669">أخضر</option>
+            <option value="#0891b2">سماوي</option>
+            <option value="#7c3aed">بنفسجي</option>
+          </select>
+          <button type="button" onclick="pgStoreAddPromo()" class="rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-4 py-2 text-xs font-black text-amber-300">+ إضافة عرض</button>
+        </div>
+      </div>
+
+      <button onclick="pgStoreSaveSettings()" class="w-full gold-gradient font-black py-3 px-5 rounded-xl text-sm">حفظ كل التخصيصات والعروض</button>`;
   }
 
   function updatePrefsCats(nextCats) {
@@ -567,6 +614,31 @@
     catch { prompt('انسخ الرابط:', storeUrl()); }
   };
 
+  window.pgStoreAddPromo = function () {
+    const title = ($('pgPromoTitle')?.value || '').trim();
+    if (!title) { toast('اكتب عنوان العرض أو الإعلان أولاً', 'warning'); return; }
+    const pr = getPrefs();
+    const list = Array.isArray(pr.promos) ? pr.promos.slice() : [];
+    list.push({
+      badge: ($('pgPromoBadge')?.value || '').trim() || 'عرض خاص',
+      title: title.slice(0, 80),
+      sub: ($('pgPromoSub')?.value || '').trim().slice(0, 90),
+      color: $('pgPromoColor')?.value || '#f59e0b'
+    });
+    pr.promos = list.slice(0, 6);
+    state.info.note = JSON.stringify(pr);
+    render();
+  };
+
+  window.pgStoreRemovePromo = function (idx) {
+    const pr = getPrefs();
+    const list = Array.isArray(pr.promos) ? pr.promos.slice() : [];
+    list.splice(idx, 1);
+    pr.promos = list;
+    state.info.note = JSON.stringify(pr);
+    render();
+  };
+
   window.pgStoreSaveSettings = async function () {
     const pr = getPrefs();
     const packed = JSON.stringify({
@@ -578,7 +650,10 @@
       nt: $('pgSNt')?.checked ? 1 : 0,
       hr: ($('pgSHours')?.value || '').trim().slice(0, 40),
       cur: $('pgSCur')?.value || 'د.ع',
-      cat: pr.cat || ''
+      cat: pr.cat || '',
+      promoOn: $('pgSPromoOn')?.checked ? 1 : 0,
+      promoSpd: Number($('pgSPromoSpd')?.value || 4),
+      promos: Array.isArray(pr.promos) ? pr.promos : []
     });
     try {
       await rpc('store_save_settings', {

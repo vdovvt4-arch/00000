@@ -29,11 +29,19 @@
     nt: 1,
     hr: '',
     cur: 'د.ع',
-    cat: ''
+    cat: '',
+    promoOn: 1,
+    promoSpd: 4,
+    promos: [
+      { badge: 'عرض خاص', title: 'أقوى المكملات والملابس الرياضية متوفرة الآن', sub: 'احجز طلبك أونلاين واستلم من القاعة مباشرة', color: '#f59e0b' },
+      { badge: 'تنبيه القاعة', title: 'خصومات حصرية لمشتركي Power Gym', sub: 'تابع العروض اليومية المتجددة داخل المتجر', color: '#0891b2' }
+    ]
   };
   let activeCategory = 'الكل';
   let current = null;
   let qty = 1;
+  let promoIdx = 0;
+  let promoTimer = null;
 
   const headers = () => ({ apikey: CFG.key, 'Content-Type': 'application/json' });
   const money = n => Math.round(Number(n) || 0).toLocaleString('en-US') + ' ' + (prefs.cur || 'د.ع');
@@ -82,6 +90,65 @@
   function finalPrice(p) {
     const d = Math.min(100, Math.max(0, Number(p.discount_percent) || 0));
     return Math.round((Number(p.price) || 0) * (1 - d / 100));
+  }
+
+  function renderPromos() {
+    const wrap = $('promoBanner');
+    if (!wrap) return;
+    if (promoTimer) { clearInterval(promoTimer); promoTimer = null; }
+    const list = Array.isArray(prefs.promos) ? prefs.promos.filter(x => x && x.title) : [];
+    if (Number(prefs.promoOn) === 0 || !list.length) {
+      wrap.classList.remove('show');
+      wrap.innerHTML = '';
+      return;
+    }
+    if (promoIdx >= list.length) promoIdx = 0;
+    wrap.classList.add('show');
+    wrap.innerHTML = `
+      <div id="promoTrack" class="promo-track" style="transform: translateX(${promoIdx * 100}%)">
+        ${list.map(item => {
+          const bgCol = /^#[0-9a-fA-F]{6}$/.test(item.color || '') ? item.color : '#f59e0b';
+          return `
+            <div class="promo-slide" style="background: linear-gradient(135deg, ${bgCol}26 0%, #09090b 85%);">
+              <div>
+                ${item.badge ? `<span class="promo-badge" style="background:${bgCol}">${esc(item.badge)}</span>` : ''}
+                <div class="promo-title">${esc(item.title)}</div>
+                ${item.sub ? `<div class="promo-sub">${esc(item.sub)}</div>` : ''}
+              </div>
+              <div style="font-size:28px;opacity:.9">🔥</div>
+            </div>`;
+        }).join('')}
+      </div>
+      ${list.length > 1 ? `
+        <div class="promo-controls">
+          <div class="promo-dots">
+            ${list.map((_, idx) => `<button type="button" class="promo-dot ${idx === promoIdx ? 'active' : ''}" data-pidx="${idx}" aria-label="عرض ${idx + 1}"></button>`).join('')}
+          </div>
+          <div class="promo-nav">
+            <button type="button" id="promoPrevBtn" aria-label="السابق">‹</button>
+            <button type="button" id="promoNextBtn" aria-label="التالي">›</button>
+          </div>
+        </div>` : ''}`;
+
+    const goTo = idx => {
+      promoIdx = (idx + list.length) % list.length;
+      const track = $('promoTrack');
+      if (track) track.style.transform = `translateX(${promoIdx * 100}%)`;
+      wrap.querySelectorAll('.promo-dot').forEach((d, i) => d.classList.toggle('active', i === promoIdx));
+    };
+
+    wrap.querySelectorAll('.promo-dot').forEach(btn => {
+      btn.addEventListener('click', () => goTo(Number(btn.dataset.pidx) || 0));
+    });
+    const prev = $('promoPrevBtn');
+    const next = $('promoNextBtn');
+    if (prev) prev.addEventListener('click', () => goTo(promoIdx - 1));
+    if (next) next.addEventListener('click', () => goTo(promoIdx + 1));
+
+    if (list.length > 1) {
+      const ms = Math.max(2, Math.min(12, Number(prefs.promoSpd) || 4)) * 1000;
+      promoTimer = setInterval(() => goTo(promoIdx + 1), ms);
+    }
   }
 
   function renderCategories() {
@@ -247,6 +314,7 @@
       empty.textContent = 'تعذر تحميل المنتجات، تحقق من الاتصال وأعد المحاولة';
       return;
     }
+    renderPromos();
     renderCategories();
     render();
   }

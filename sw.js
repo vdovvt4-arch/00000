@@ -1,5 +1,5 @@
 // Service Worker - Power Gym Studio v4.0 (PWA Offline-First)
-const CACHE_NAME = 'power-gym-web-v48';
+const CACHE_NAME = 'power-gym-web-v49';
 const LOCAL_ASSETS = [
   './',
   './index.html',
