@@ -1,6 +1,6 @@
-// Supabase Edge Function: auto-whatsapp-alerts
+// Supabase Edge Function: auto-whatsapp-alerts (v4.0 — Reads Normalized Relational Tables)
 // ترسل تنبيهات الواتساب تلقائياً عبر Meta WhatsApp Cloud API بدون تدخل بشري
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +9,6 @@ const corsHeaders = {
 };
 
 function todayBaghdad(): string {
-  // توقيت بغداد UTC+3
   const now = new Date(Date.now() + 3 * 3600 * 1000);
   return now.toISOString().slice(0, 10);
 }
@@ -88,6 +87,7 @@ Deno.serve(async req => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const waToken = Deno.env.get('WHATSAPP_TOKEN') || '';
     const waPhoneId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') || '';
     const cronSecret = Deno.env.get('CRON_SECRET') || '';
@@ -101,21 +101,29 @@ Deno.serve(async req => {
     const gymId = String(payload.gym_id || Deno.env.get('DEFAULT_GYM_ID') || 'powergym-main');
     const dryRun = Boolean(payload.dryRun);
     const reqSecret = req.headers.get('x-cron-secret') || '';
+    const authHeader = req.headers.get('Authorization') || '';
 
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const adminClient = createClient(supabaseUrl, serviceKey);
 
-    // التحقق من الصلاحية: إما CRON_SECRET أو syncSecret الخاص بالقاعة
+    // التحقق من الصلاحية: إما CRON_SECRET من pg_cron أو جلسة مستخدم موثق ينتمي للقاعة عبر Google/Supabase Auth
     let authorized = Boolean(cronSecret && reqSecret === cronSecret);
-    if (!authorized && payload.sync_secret) {
-      const { data: accessRow } = await supabase
-        .from('gym_access')
-        .select('secret')
-        .eq('gym_id', gymId)
-        .maybeSingle();
-      if (accessRow && accessRow.secret === String(payload.sync_secret)) {
-        authorized = true;
+    if (!authorized && authHeader.startsWith('Bearer ') && anonKey) {
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: userData } = await userClient.auth.getUser();
+      if (userData?.user?.id) {
+        const { data: mem } = await adminClient
+          .from('pg_gym_memberships')
+          .select('role')
+          .eq('gym_id', gymId)
+          .eq('user_id', userData.user.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (mem) authorized = true;
       }
     }
+
     if (!authorized) {
       return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), {
         status: 401,
@@ -130,60 +138,54 @@ Deno.serve(async req => {
       });
     }
 
-    // قراءة بيانات القاعة من gym_sync
-    const { data: rows, error: fetchErr } = await supabase
-      .from('gym_sync')
-      .select('storage_key, payload')
-      .eq('gym_id', gymId)
-      .in('storage_key', ['power_gym_players_v1', 'power_gym_profile_v2', 'pg_freezes_v1', 'pg_whatsapp_sent_v1']);
+    // قراءة البيانات من الجداول العلائقية المهيكلة الجديدة
+    const [{ data: gymRow }, { data: members }, { data: freezes }, { data: sentRows }] = await Promise.all([
+      adminClient.from('pg_gyms').select('gym_name').eq('gym_id', gymId).maybeSingle(),
+      adminClient.from('pg_members').select('id, name, phone, end_date').eq('gym_id', gymId).is('deleted_at', null),
+      adminClient.from('pg_member_freezes').select('member_id').eq('gym_id', gymId).is('ended_at', null),
+      adminClient.from('pg_whatsapp_logs').select('log_key, sent_date').eq('gym_id', gymId)
+    ]);
 
-    if (fetchErr) throw fetchErr;
-
-    const map: Record<string, string> = {};
-    (rows || []).forEach(r => { map[r.storage_key] = r.payload; });
-
-    const players = JSON.parse(map['power_gym_players_v1'] || '[]');
-    const profile = JSON.parse(map['power_gym_profile_v2'] || '{}');
-    const freezes = JSON.parse(map['pg_freezes_v1'] || '[]');
-    const sentLog = JSON.parse(map['pg_whatsapp_sent_v1'] || '{}');
-
-    const gymName = String(profile.gymName || 'Power Gym');
+    const gymName = String(gymRow?.gym_name || 'Power Gym');
     const today = todayBaghdad();
-    const frozenIds = new Set(
-      (Array.isArray(freezes) ? freezes : [])
-        .filter((f: any) => !f.endedAt)
-        .map((f: any) => String(f.playerId))
+    const frozenIds = new Set((freezes || []).map((f: any) => String(f.member_id)));
+    const sentTodaySet = new Set(
+      (sentRows || [])
+        .filter((s: any) => String(s.sent_date).slice(0, 10) === today)
+        .map((s: any) => String(s.log_key))
     );
 
     const results: any[] = [];
+    const newLogs: any[] = [];
     let sentCount = 0;
     let failedCount = 0;
 
-    for (const p of Array.isArray(players) ? players : []) {
-      if (!p || !p.endDate || frozenIds.has(String(p.id))) continue;
+    for (const p of members || []) {
+      if (!p || !p.end_date || frozenIds.has(String(p.id))) continue;
       const intl = toIntlPhone(p.phone);
       if (!intl) continue;
 
-      const left = dayDiff(today, p.endDate);
+      const endDate = String(p.end_date).slice(0, 10);
+      const left = dayDiff(today, endDate);
       let kind: 'soon' | 'expired' | null = null;
       if (left >= 0 && left <= 3) kind = 'soon';
-      else if (left < 0 && left >= -7) kind = 'expired'; // المنتهين خلال آخر 7 أيام فقط
+      else if (left < 0 && left >= -7) kind = 'expired';
       if (!kind) continue;
 
       const logKey = `${kind}_${p.id}`;
-      if (sentLog[logKey] && sentLog[logKey].date === today) continue;
+      if (sentTodaySet.has(logKey)) continue;
 
       const templateName = kind === 'soon' ? tplSoon : tplExpired;
       const vars = kind === 'soon'
-        ? [p.name || 'كابتن', gymName, p.endDate, String(left)]
-        : [p.name || 'كابتن', gymName, p.endDate];
+        ? [p.name || 'كابتن', gymName, endDate, String(left)]
+        : [p.name || 'كابتن', gymName, endDate];
 
       const fallbackText = kind === 'soon'
-        ? `السلام عليكم كابتن ${p.name}، نذكرك بأن اشتراكك في ${gymName} ينتهي بتاريخ ${p.endDate} (باقي ${left} يوم).`
-        : `السلام عليكم كابتن ${p.name}، انتهى اشتراكك في ${gymName} بتاريخ ${p.endDate}. بانتظارك للتجديد!`;
+        ? `السلام عليكم كابتن ${p.name}، نذكرك بأن اشتراكك في ${gymName} ينتهي بتاريخ ${endDate} (باقي ${left} يوم).`
+        : `السلام عليكم كابتن ${p.name}، انتهى اشتراكك في ${gymName} بتاريخ ${endDate}. بانتظارك للتجديد!`;
 
       if (dryRun) {
-        results.push({ id: p.id, name: p.name, phone: intl, kind, endDate: p.endDate, status: 'would_send' });
+        results.push({ id: p.id, name: p.name, phone: intl, kind, endDate, status: 'would_send' });
         continue;
       }
 
@@ -198,7 +200,13 @@ Deno.serve(async req => {
           fallbackText,
           useTextMode
         });
-        sentLog[logKey] = { date: today, by: 'النظام التلقائي (Meta)' };
+        newLogs.push({
+          gym_id: gymId,
+          log_key: logKey,
+          sent_date: today,
+          sent_by: 'النظام التلقائي (Meta)',
+          updated_at: new Date().toISOString()
+        });
         sentCount++;
         results.push({ id: p.id, name: p.name, phone: intl, kind, status: 'sent' });
       } catch (e: any) {
@@ -207,14 +215,8 @@ Deno.serve(async req => {
       }
     }
 
-    if (!dryRun && sentCount > 0) {
-      await supabase.from('gym_sync').upsert({
-        gym_id: gymId,
-        storage_key: 'pg_whatsapp_sent_v1',
-        payload: JSON.stringify(sentLog),
-        updated_by: 'auto-whatsapp-cron',
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'gym_id,storage_key' });
+    if (!dryRun && newLogs.length > 0) {
+      await adminClient.from('pg_whatsapp_logs').upsert(newLogs, { onConflict: 'gym_id,log_key' });
     }
 
     return new Response(JSON.stringify({
