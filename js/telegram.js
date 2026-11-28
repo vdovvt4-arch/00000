@@ -187,7 +187,7 @@ function generateWhatsAppAlertLink(player) {
   const debt = Number(player.debtAmount) || 0;
   const statusLine =
     sub.diffDays === 0 ? `⚠️ اشتراكك ينتهي اليوم!` :
-    sub.diffDays === 1 ? `⚠️ باقي يوم واحد على انتهاء اشتراكك (يُعدّ منتهياً)` :
+    sub.diffDays === 1 ? `⏳ باقي يوم واحد على انتهاء اشتراكك (ينتهي غداً)` :
     sub.status === 'expired' ? `⛔ انتهى اشتراكك منذ ${Math.abs(sub.diffDays)} يوم` :
     sub.status === 'soon' ? `⏳ باقي ${sub.diffDays} يوم على انتهاء اشتراكك` :
     `✅ اشتراكك فعّال (باقي ${sub.diffDays} يوم)`;
@@ -221,6 +221,23 @@ async function sendThreeDayReminderToPlayerById(playerId) {
 
 async function sendPlayerActivationMessageById(playerId) {
   return sendSubscriptionAlertById(playerId);
+}
+
+async function sendDirectTelegramMessageToPlayer(player, htmlText) {
+  const { botToken } = getTelegramSettings();
+  const chatId = player?.playerChatId || telegramDirectory?.phoneToChatId?.[formatIraqiPhone(player?.phone)]?.chatId || '';
+  if (!botToken || !chatId || !htmlText) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: htmlText, parse_mode: 'HTML' })
+    });
+    const data = await res.json().catch(() => ({}));
+    return Boolean(data && data.ok);
+  } catch {
+    return false;
+  }
 }
 
 async function runThreeDayCountdownReminders() {

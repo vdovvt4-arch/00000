@@ -236,15 +236,25 @@ function logActivity(actionText) {
 }
 
 // =========================================================
-// 2. Date & Subscription Status Engine
+// 2. Date & Subscription Status Engine (Unified Baghdad Time UTC+3)
 // =========================================================
 function getTodayDateString() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Baghdad',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const y = parts.find(p => p.type === 'year')?.value;
+    const m = parts.find(p => p.type === 'month')?.value;
+    const d = parts.find(p => p.type === 'day')?.value;
+    if (y && m && d) return `${y}-${m}-${d}`;
+  } catch { /* fallback below */ }
+  const baghdad = new Date(Date.now() + 3 * 3600 * 1000);
+  return baghdad.toISOString().slice(0, 10);
 }
+window.getBaghdadDateString = getTodayDateString;
 
 function addMonthsToDate(dateStr, monthsToAdd) {
   const mVal = Number(monthsToAdd);
@@ -313,11 +323,11 @@ function getSubscriptionStatus(endDateStr) {
   const diffTime = endDate.getTime() - todayDate.getTime();
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-  if (diffDays <= 1) {
+  if (diffDays < 0) {
     return {
       status: 'expired',
       diffDays,
-      label: diffDays < 0 ? `منتهي منذ ${Math.abs(diffDays)} يوم` : (diffDays === 0 ? 'منتهي (آخر يوم اليوم)' : 'منتهي (باقي يوم واحد)'),
+      label: `منتهي منذ ${Math.abs(diffDays)} يوم`,
       badgeClass: 'pg-badge pg-badge--expired',
       borderClass: 'border-rose-500/40'
     };
@@ -325,7 +335,7 @@ function getSubscriptionStatus(endDateStr) {
     return {
       status: 'soon',
       diffDays,
-      label: `ينتهي خلال ${diffDays} أيام`,
+      label: diffDays === 0 ? 'ينتهي اليوم!' : (diffDays === 1 ? 'ينتهي غداً (باقي يوم)' : `ينتهي خلال ${diffDays} أيام`),
       badgeClass: 'pg-badge pg-badge--soon',
       borderClass: 'border-amber-400/40'
     };
@@ -393,10 +403,11 @@ function loadDataFromStorage() {
         renewals: Array.isArray(parsedFin.renewals) ? parsedFin.renewals : [],
         receipts: Array.isArray(parsedFin.receipts) ? parsedFin.receipts : [],
         receiptCounter: Math.max(0, parseInt(parsedFin.receiptCounter, 10) || 0),
-        receiptSettings: parsedFin.receiptSettings && typeof parsedProf?.receiptSettings === 'object' ? parsedFin.receiptSettings : (parsedFin.receiptSettings && typeof parsedFin.receiptSettings === 'object' ? parsedFin.receiptSettings : {})
+        receiptSettings: (parsedFin.receiptSettings && typeof parsedFin.receiptSettings === 'object') ? parsedFin.receiptSettings : {}
       };
     }
-  } catch {
+  } catch (finErr) {
+    console.error('Finance ledger load error:', finErr);
     financeLedger = { manualProfitAdjustment: 0, manualDebtAdjustment: 0, transactions: [], debtEntries: [], debtPayments: [], renewals: [], receipts: [], receiptCounter: 0, receiptSettings: {} };
   }
 

@@ -1,7 +1,7 @@
 'use strict';
 // =========================================================
-// Power Gym — Structured Backend Service Layer (js/backend-api.js)
-// يوحّد التعامل مع التخزين المحلي (IndexedDB) + المزامنة السحابية (Supabase RPC)
+// Power Gym — Structured Backend Service Layer (js/backend-api.js v4.0)
+// واجهة موحّدة للتخزين المحلي + استدعاء دوال PostgreSQL الموثقة عبر Supabase Auth
 // =========================================================
 (function () {
   function readList(key) {
@@ -18,66 +18,27 @@
     localStorage.setItem(key, JSON.stringify(Array.isArray(list) ? list : []));
   }
 
-  function getCloudConfig() {
-    return window.pgCloudSync && typeof window.pgCloudSync.getConfig === 'function'
-      ? window.pgCloudSync.getConfig()
-      : null;
-  }
-
   async function callSupabaseRpc(fnName, params) {
-    const cfg = getCloudConfig();
-    if (!cfg || !cfg.enabled || !cfg.supabaseUrl || !cfg.supabaseAnonKey) {
-      return { ok: false, reason: 'cloud_not_configured' };
+    const client = window.pgSupabase || (window.pgAuth && window.pgAuth.getClient());
+    if (!client) {
+      return { ok: false, reason: 'supabase_client_missing' };
     }
-    const baseUrl = String(cfg.supabaseUrl).replace(/\/+$/, '');
-    const res = await fetch(`${baseUrl}/rest/v1/rpc/${fnName}`, {
-      method: 'POST',
-      headers: {
-        apikey: cfg.supabaseAnonKey,
-        Authorization: `Bearer ${cfg.supabaseAnonKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(params || {})
-    });
-    if (!res.ok) {
-      return { ok: false, status: res.status, error: await res.text().catch(() => '') };
+    const { data, error } = await client.rpc(fnName, params || {});
+    if (error) {
+      return { ok: false, error: error.message };
     }
-    const data = await res.json().catch(() => null);
     return { ok: true, data };
-  }
-
-  async function pushStructuredSnapshot() {
-    const cfg = getCloudConfig();
-    if (!cfg || !cfg.enabled || !cfg.gymId || !cfg.syncSecret) {
-      return { ok: false, reason: 'cloud_not_configured' };
-    }
-    const foundation = window.PGDataFoundation;
-    const members = readList('power_gym_players_v1').map(m => (foundation ? foundation.normalizePlayer(m) : m));
-    const inventory = readList('pg_inventory_v1').map(i => (foundation ? foundation.normalizeInventoryItem(i) : i));
-    const sales = readList('pg_sales_v1').map(s => (foundation ? foundation.normalizeSale(s) : s));
-
-    return callSupabaseRpc('pg_sync_structured_snapshot', {
-      p_gym: cfg.gymId,
-      p_secret: cfg.syncSecret,
-      p_snapshot: {
-        schema_version: foundation ? foundation.SCHEMA_VERSION : 3,
-        synced_at: new Date().toISOString(),
-        members,
-        inventory,
-        sales
-      }
-    });
   }
 
   function health() {
     const foundation = window.PGDataFoundation;
     const validation = foundation ? foundation.validateAll() : { ok: true, stats: {} };
-    const cfg = getCloudConfig();
     return {
-      schemaVersion: foundation ? foundation.SCHEMA_VERSION : 3,
+      schemaVersion: 4,
       online: typeof navigator !== 'undefined' ? navigator.onLine : true,
-      cloudConfigured: Boolean(cfg && cfg.enabled && cfg.supabaseUrl),
-      gymId: cfg ? cfg.gymId : 'local',
+      authenticated: Boolean(window.pgAuth && window.pgAuth.isAuthenticated()),
+      gymId: (window.pgAuth && window.pgAuth.getGymId()) || 'powergym-main',
+      role: (window.pgAuth && window.pgAuth.getRole()) || 'guest',
       validation
     };
   }
@@ -87,7 +48,8 @@
     callRpc: callSupabaseRpc,
     sync: {
       now: () => (window.pgCloudSyncNow ? window.pgCloudSyncNow() : Promise.resolve(false)),
-      pushStructuredSnapshot
+      pushAll: () => (window.pgPushAllCloud ? window.pgPushAllCloud() : Promise.resolve(false)),
+      pullAll: () => (window.pgPullAllCloud ? window.pgPullAllCloud() : Promise.resolve(false))
     },
     members: {
       list: () => readList('power_gym_players_v1'),

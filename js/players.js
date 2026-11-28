@@ -666,6 +666,9 @@ function deletePlayer(playerId) {
   if (!player) return;
   if (confirm(`هل أنت متأكد من حذف اشتراك اللاعب "${player.name}" نهائياً؟`)) {
     players = players.filter(p => p.id !== playerId);
+    if (typeof window.pgRecordDeletedPlayer === 'function') {
+      window.pgRecordDeletedPlayer(playerId);
+    }
     savePlayersToStorage();
     logActivity(`حذف اللاعب: ${player.name} (${player.code})`);
     showToast(`تم حذف اللاعب "${player.name}"`, 'info');
@@ -854,11 +857,10 @@ async function sendPlayerCourseWhatsApp() {
 
   if (images.length && navigator.share && navigator.canShare) {
     try {
-      const files = await Promise.all(images.map(async (dataUrl, i) => {
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
+      const files = images.map((dataUrl, i) => {
+        const blob = dataURLtoBlob(dataUrl);
         return new File([blob], `course_${player.code || 'pg'}_${i + 1}.jpg`, { type: blob.type || 'image/jpeg' });
-      }));
+      });
       if (navigator.canShare({ files })) {
         await navigator.share({ title: `كورس ${player.name}`, text, files });
         logActivity(`مشاركة صور كورس اللاعب ${player.name} عبر واتساب`);
