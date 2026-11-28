@@ -722,3 +722,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   background: rgba(16, 185, 129, 0.12);
   color: #6ee7b7;
 }
+
+/* ---------- Protected Route Auth Lock ---------- */
+html.pg-auth-locked {
+  overflow: hidden;
+}
+html.pg-auth-locked > body > *:not(#pgAuthGate):not(#toastContainer) {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
