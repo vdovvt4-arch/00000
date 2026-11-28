@@ -529,16 +529,18 @@
     }
     const gym = (typeof gymProfile !== 'undefined' && gymProfile.gymName) ? gymProfile.gymName : 'Power Gym';
     const typeLabel = TYPES[rec.type] || 'استلام';
-    const amount = Number(rec.amount || rec.paidAmount || 0).toLocaleString('en-US');
-    const debt = Number(rec.debtAfter ?? rec.debtAmount ?? 0).toLocaleString('en-US');
+    const paidVal = Number(rec.paid ?? rec.paidAmount ?? rec.amount ?? 0);
+    const remDebtVal = Number(rec.playerDebtAfter ?? rec.remaining ?? rec.debtAfter ?? rec.debtAmount ?? 0);
+    const amount = paidVal.toLocaleString('en-US');
+    const debt = remDebtVal.toLocaleString('en-US');
     const lines = [
       `🧾 *وصل ${typeLabel} — ${gym}*`,
       `رقم الوصل: *${rec.no || '-'}*`,
-      `التاريخ: ${rec.date || new Date().toISOString().slice(0, 10)}`,
+      `التاريخ: ${rec.date || getTodayDateString()}`,
       rec.playerName ? `اللاعب: *${rec.playerName}*` : '',
       rec.playerCode ? `رقم العضوية: ${rec.playerCode}` : '',
       `المبلغ المدفوع: *${amount} د.ع*`,
-      Number(rec.debtAfter ?? rec.debtAmount ?? 0) > 0 ? `المتبقي (الدين): ${debt} د.ع` : '',
+      remDebtVal > 0 ? `المتبقي (الدين): ${debt} د.ع` : '',
       rec.endDate ? `تاريخ انتهاء الاشتراك: ${rec.endDate}` : '',
       rec.note || rec.description ? `التفاصيل: ${rec.note || rec.description}` : '',
       rec.voided ? '⚠️ *هذا الوصل ملغي*' : 'شكراً لاشتراكك معنا 💪'

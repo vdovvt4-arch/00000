@@ -1,18 +1,17 @@
 /* =========================================================
-   store-admin.js — إدارة متجر القاعة v3.0
-   ربط ذكي بالمخزن والمبيعات + دعم تعدد الأقسام + تنظيم الخيارات
+   store-admin.js — إدارة متجر القاعة الفرعي v4.0 (PostgreSQL + Auth RLS)
+   ربط كامل بقاعدة البيانات المنظمة (store_settings / store_products / store_reservations)
+   والمخزن والمبيعات بدون أي مفاتيح سرية مكشوفة
    ========================================================= */
 (function () {
   'use strict';
 
-  const PIN_KEY = 'pg_store_pin_v1';
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const toast = (m, t) => { if (typeof showToast === 'function') showToast(m, t || 'info'); };
 
   const ERR = {
-    bad_pin: 'رمز المتجر غير صحيح',
-    pin_too_short: 'الرمز يجب أن يكون 6 خانات على الأقل',
+    unauthorized_gym_access: 'ليس لديك صلاحية لإدارة هذا المتجر؛ سجّل الدخول بحساب القاعة أولاً',
     invalid_product: 'بيانات المنتج غير صالحة'
   };
   const STATUS = {
@@ -33,34 +32,13 @@
 
   let state = { view: 'products', resFilter: 'all', products: [], reservations: [], info: {}, editing: null, image: '', selectedCats: [] };
 
-  function cfg() {
-    const c = window.pgCloudSync ? window.pgCloudSync.getConfig() : {};
-    return {
-      url: c.supabaseUrl || 'https://bpwjdjkqcfxerizrssbs.supabase.co',
-      key: c.supabaseAnonKey || 'sb_publishable_GwS8ghvuEC6cCFb4GJ0j5Q_NBpXAgKO',
-      gym: c.gymId || 'powergym-main',
-      secret: c.syncSecret || 'aff212db9e4d8564e1e63ba328fa4867'
-    };
+  function getClient() {
+    return window.pgSupabase || (window.pgAuth && window.pgAuth.getClient()) || null;
   }
-  const getPin = () => {
-    let p = '';
-    try { p = window.sessionStorage.getItem(PIN_KEY) || ''; } catch { /* ignore */ }
-    if (!p) {
-      const legacy = window.localStorage.getItem(PIN_KEY) || '';
-      if (legacy) {
-        p = legacy;
-        try { window.sessionStorage.setItem(PIN_KEY, legacy); window.localStorage.removeItem(PIN_KEY); } catch { /* ignore */ }
-      }
-    }
-    return p || cfg().secret;
-  };
-  const setPin = v => {
-    try {
-      if (v) window.sessionStorage.setItem(PIN_KEY, v);
-      else window.sessionStorage.removeItem(PIN_KEY);
-    } catch { /* ignore */ }
-    window.localStorage.removeItem(PIN_KEY);
-  };
+
+  function getGymId() {
+    return (window.pgAuth && window.pgAuth.getGymId()) || 'powergym-main';
+  }
 
   function getPrefs() {
     const def = {
@@ -78,9 +56,14 @@
     def.t = s;
     return def;
   }
+
   const money = n => Math.round(Number(n) || 0).toLocaleString('en-US') + ' ' + (getPrefs().cur || 'د.ع');
 
-  function parseCategories(desc) {
+  function parseCategories(desc, rowCats) {
+    if (Array.isArray(rowCats) && rowCats.length) {
+      const m = String(desc || '').match(/^\[([^\]]{1,80})\]\s*\n?([\s\S]*)$/);
+      return { cats: rowCats.map(x => String(x).trim()).filter(Boolean), cat: rowCats.join('، '), text: m ? m[2].trim() : String(desc || '').trim() };
+    }
     const m = String(desc || '').match(/^\[([^\]]{1,80})\]\s*\n?([\s\S]*)$/);
     if (!m) return { cats: [], cat: '', text: String(desc || '').trim() };
     const cats = m[1].split(/[,،]/).map(x => x.trim()).filter(Boolean);
@@ -89,39 +72,37 @@
 
   function getAllSectionList() {
     const fromPrefs = String(getPrefs().cat || '').split(/[,،]/).map(x => x.trim()).filter(Boolean);
-    const fromProds = state.products.flatMap(p => parseCategories(p.description).cats);
-    return Array.from(new Set([...fromPrefs, ...fromProds]));
+    const fromInfo = Array.isArray(state.info?.categories) ? state.info.categories : [];
+    const fromProds = state.products.flatMap(p => parseCategories(p.description, p.categories).cats);
+    return Array.from(new Set([...fromPrefs, ...fromInfo, ...fromProds]));
   }
 
-  function hdrs(c) {
-    const h = { apikey: c.key, 'Content-Type': 'application/json' };
-    if (!String(c.key || '').startsWith('sb_publishable_')) h.Authorization = `Bearer ${c.key}`;
-    return h;
-  }
   async function rpc(name, args) {
-    const c = cfg();
-    if (!c.url || !c.key) throw new Error('no_config');
-    const res = await fetch(`${c.url}/rest/v1/rpc/${name}`, { method: 'POST', headers: hdrs(c), body: JSON.stringify(args) });
-    const text = await res.text();
-    if (!res.ok) {
-      let msg = text;
-      try { msg = JSON.parse(text).message || text; } catch { /* ignore */ }
-      if (res.status === 404 || /Could not find the function/i.test(msg)) throw new Error('not_installed');
-      throw new Error(msg);
-    }
-    return text ? JSON.parse(text) : null;
+    const client = getClient();
+    if (!client) throw new Error('no_config');
+    const { data, error } = await client.rpc(name, args);
+    if (error) throw new Error(error.message || 'rpc_error');
+    return data;
   }
+
   async function loadProducts() {
-    const c = cfg();
-    const res = await fetch(`${c.url}/rest/v1/store_products?gym_id=eq.${encodeURIComponent(c.gym)}&select=*&order=sort_order.asc,updated_at.desc`, { headers: hdrs(c) });
-    if (!res.ok) throw new Error('not_installed');
-    return res.json();
+    const client = getClient();
+    if (!client) throw new Error('no_config');
+    const { data, error } = await client
+      .from('store_products')
+      .select('*')
+      .eq('gym_id', getGymId())
+      .order('sort_order', { ascending: true })
+      .order('updated_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data || [];
   }
-  const errText = e => ERR[e.message] || (e.message === 'no_config' ? 'فعّل السيرفر والمزامنة أولاً' : 'حدث خطأ: ' + e.message);
+
+  const errText = e => ERR[e.message] || (e.message === 'no_config' ? 'يرجى تسجيل الدخول أولاً' : 'حدث خطأ: ' + e.message);
 
   function storeUrl() {
     const base = location.origin + location.pathname.replace(/[^/]*$/, '');
-    return `${base}store.html?g=${encodeURIComponent(cfg().gym)}`;
+    return `${base}store.html?g=${encodeURIComponent(getGymId())}`;
   }
   const finalPrice = p => Math.round((Number(p.price) || 0) * (1 - Math.min(100, Math.max(0, Number(p.discount_percent) || 0)) / 100));
 
@@ -137,27 +118,24 @@
       <section class="card-bg w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl p-5 space-y-4">
         <header class="flex items-center justify-between border-b border-zinc-800 pb-3">
           <div>
-            <h2 class="text-lg font-black text-white"><i class="fa-solid fa-store text-amber-400"></i> إدارة متجر القاعة</h2>
-            <p class="text-[11px] text-zinc-400">مربوط بالسيرفر والمخزن والمبيعات · تعدد الأقسام والحجوزات</p>
+            <h2 class="text-lg font-black text-white"><i class="fa-solid fa-store text-amber-400"></i> إدارة متجر القاعة الفرعي</h2>
+            <p class="text-[11px] text-zinc-400">مربوط مباشرةً بجداول PostgreSQL والمخزن والمبيعات</p>
           </div>
-          <button onclick="document.getElementById('pgStoreModal').remove()" class="rounded-xl bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs font-bold text-amber-300">← العودة للموقع</button>
+          <button onclick="document.getElementById('pgStoreModal').remove()" class="rounded-xl bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs font-bold text-amber-300">← العودة للوحة</button>
         </header>
         ${inner}
       </section>`;
   }
 
   window.openStoreAdmin = async function () {
-    shell('<p class="py-10 text-center text-sm text-zinc-400">جارٍ التحميل من السيرفر...</p>');
-    const c = cfg();
-    if (!c.url || !c.key) return shell('<p class="py-8 text-center text-sm text-amber-300">فعّل السيرفر السحابي أولاً.</p>');
+    shell('<p class="py-10 text-center text-sm text-zinc-400">جارٍ جلب بيانات المتجر من قاعدة البيانات...</p>');
+    if (!window.pgAuth?.isAuthenticated()) {
+      return shell('<p class="py-8 text-center text-sm text-amber-300">يرجى تسجيل الدخول بحساب القاعة أولاً.</p>');
+    }
     try {
-      state.info = (await rpc('store_get_info', { p_gym: c.gym })) || {};
-    } catch { return shell('<p class="py-8 text-center text-sm text-rose-300">تعذر الاتصال بقاعدة بيانات المتجر.</p>'); }
-    if (!state.info.configured) {
-      try {
-        await rpc('store_init', { p_gym: c.gym, p_pin: getPin() });
-        setPin(getPin());
-      } catch { /* ignore if already configured */ }
+      state.info = (await rpc('store_get_info', { p_gym: getGymId() })) || {};
+    } catch (e) {
+      return shell(`<p class="py-8 text-center text-sm text-rose-300">تعذر الاتصال بقاعدة بيانات المتجر: ${esc(e.message)}</p>`);
     }
     state.view = 'products';
     await refreshAll();
@@ -171,7 +149,7 @@
       toast(errText(e), 'error');
     }
     try {
-      state.reservations = (await rpc('store_list_reservations', { p_gym: cfg().gym, p_pin: getPin() })) || [];
+      state.reservations = (await rpc('store_list_reservations', { p_gym: getGymId() })) || [];
     } catch {
       state.reservations = [];
     }
@@ -207,8 +185,9 @@
 
     const list = state.products.map(p => {
       const d = Number(p.discount_percent) || 0;
-      const parsed = parseCategories(p.description);
+      const parsed = parseCategories(p.description, p.categories);
       const matchedInv = invItems.find(it => it.storeProductId === p.id || it.name.trim() === p.name.trim());
+      const stockNum = matchedInv ? matchedInv.qty : (p.stock_qty ?? '');
       return `
         <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-3">
           <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-800 flex items-center justify-center text-zinc-500">${p.image ? `<img src="${esc(p.image)}" class="h-full w-full object-cover">` : '<i class="fa-solid fa-image"></i>'}</div>
@@ -216,15 +195,15 @@
             <p class="truncate text-sm font-black text-white">${esc(p.name)}</p>
             <div class="flex flex-wrap items-center gap-1 mt-0.5">
               ${parsed.cats.map(c => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold">${esc(c)}</span>`).join('')}
-              ${matchedInv ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-bold">مخزون: ${matchedInv.qty}</span>` : ''}
+              ${stockNum !== '' ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-bold">مخزون: ${stockNum}</span>` : ''}
             </div>
             <p class="text-xs text-emerald-300 mt-0.5">${money(finalPrice(p))} ${d > 0 ? `<span class="text-zinc-500 line-through">${money(p.price)}</span> <span class="text-rose-300">-${Math.round(d)}%</span>` : ''}</p>
           </div>
           <div class="flex flex-wrap gap-1.5">
             <button onclick="pgStoreToggleAvail('${esc(p.id)}')" class="rounded-lg px-2.5 py-1.5 text-[11px] font-bold ${p.available ? 'bg-emerald-900/60 text-emerald-300' : 'bg-zinc-800 text-zinc-400'}">${p.available ? 'متوفر ✓' : 'نفد ✕'}</button>
             <button onclick="pgStoreDuplicate('${esc(p.id)}')" class="rounded-lg bg-zinc-800 px-2.5 py-1.5 text-[11px] font-bold text-zinc-200">نسخ</button>
-            <button onclick="pgStoreEdit('${esc(p.id)}')" class="rounded-lg bg-zinc-800 px-3 py-1.5 text-[11px] font-bold text-amber-300">تعديل</button>
-            <button onclick="pgStoreDelete('${esc(p.id)}')" class="rounded-lg bg-rose-900/60 px-3 py-1.5 text-[11px] font-bold text-rose-200">حذف</button>
+            <button onclick="pgStoreEdit('${esc(p.id)}')" class="rounded-lg bg-zinc-800 px-2.5 py-1.5 text-[11px] font-bold text-amber-300">تعديل</button>
+            <button onclick="pgStoreDelete('${esc(p.id)}')" class="rounded-lg bg-rose-900/60 px-2.5 py-1.5 text-[11px] font-bold text-rose-200">حذف</button>
           </div>
         </div>`;
     }).join('');
@@ -258,9 +237,14 @@
     if (!p) return;
     try {
       await rpc('store_upsert_product', {
-        p_gym: cfg().gym, p_pin: getPin(),
-        p: { id: p.id, name: p.name, price: p.price, discount_percent: p.discount_percent, description: p.description, image: p.image, available: !p.available, sort_order: p.sort_order }
+        p_gym: getGymId(),
+        p: {
+          id: p.id, name: p.name, price: p.price, discount_percent: p.discount_percent,
+          description: p.description, categories: parseCategories(p.description, p.categories).cats,
+          image: p.image, available: !p.available, stock_qty: !p.available ? Math.max(1, Number(p.stock_qty) || 10) : 0, sort_order: p.sort_order
+        }
       });
+      await window.pgCloudSync?.syncNow(false);
       await refreshAll();
     } catch (e) { toast(errText(e), 'error'); }
   };
@@ -270,15 +254,15 @@
     if (!p) return;
     state.editing = Object.assign({}, p, { id: 'prd_' + Date.now(), name: p.name + ' (نسخة)' });
     state.image = state.editing.image || '';
-    state.selectedCats = parseCategories(state.editing.description).cats;
+    state.selectedCats = parseCategories(state.editing.description, state.editing.categories).cats;
     render();
   };
 
   window.pgStoreEdit = function (id) {
     const p = id ? state.products.find(x => x.id === id) : null;
-    state.editing = p ? Object.assign({}, p) : { id: 'prd_' + Date.now(), name: '', description: '', price: '', discount_percent: 0, image: '', available: true, sort_order: 0 };
+    state.editing = p ? Object.assign({}, p) : { id: 'prd_' + Date.now(), name: '', description: '', price: '', discount_percent: 0, stock_qty: 10, image: '', available: true, sort_order: 0 };
     state.image = state.editing.image || '';
-    state.selectedCats = parseCategories(state.editing.description).cats;
+    state.selectedCats = parseCategories(state.editing.description, state.editing.categories).cats;
     render();
   };
 
@@ -309,7 +293,7 @@
 
   function editorView() {
     const p = state.editing;
-    const parsed = parseCategories(p.description);
+    const parsed = parseCategories(p.description, p.categories);
     const inp = 'w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white';
     return `
       <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 space-y-3">
@@ -326,9 +310,10 @@
             <button type="button" onclick="pgStoreAddCustomProdCat()" class="rounded-lg bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs font-bold text-amber-300">+ إضافة قسم</button>
           </div>
         </div>
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div><label class="block text-xs font-bold text-zinc-300 mb-1">السعر *</label><input id="pgPPrice" type="number" min="0" class="${inp}" value="${esc(p.price)}" oninput="pgStoreCalc()"></div>
           <div><label class="block text-xs font-bold text-zinc-300 mb-1">الخصم %</label><input id="pgPDisc" type="number" min="0" max="100" class="${inp}" value="${esc(p.discount_percent)}" oninput="pgStoreCalc()"></div>
+          <div><label class="block text-xs font-bold text-zinc-300 mb-1">الكمية بالمخزن</label><input id="pgPStock" type="number" min="0" class="${inp}" value="${esc(p.stock_qty ?? 10)}"></div>
           <div><label class="block text-xs font-bold text-zinc-300 mb-1">ترتيب العرض</label><input id="pgPSort" type="number" class="${inp}" value="${esc(p.sort_order || 0)}"></div>
         </div>
         <p id="pgPFinal" class="text-xs text-emerald-300"></p>
@@ -340,7 +325,7 @@
         </div>
         <label class="flex items-center gap-2 text-xs font-bold text-zinc-200"><input id="pgPAvail" type="checkbox" ${p.available ? 'checked' : ''} class="accent-amber-400 h-4 w-4"> متوفر للحجز</label>
         <div class="flex gap-2 pt-1">
-          <button onclick="pgStoreSave()" class="flex-1 gold-gradient font-black py-2.5 rounded-xl text-sm">حفظ المنتج</button>
+          <button onclick="pgStoreSave()" class="flex-1 gold-gradient font-black py-2.5 rounded-xl text-sm">حفظ في قاعدة البيانات</button>
           <button onclick="pgStoreView('products')" class="rounded-xl bg-zinc-800 px-5 text-xs font-bold text-zinc-300">إلغاء</button>
         </div>
       </div>`;
@@ -384,18 +369,24 @@
     const catsStr = state.selectedCats.join(', ').slice(0, 75);
     const rawDesc = $('pgPDesc').value.trim();
     const description = catsStr ? `[${catsStr}]\n${rawDesc}` : rawDesc;
+    const stockQty = Math.max(0, Number($('pgPStock')?.value ?? 10));
     const payload = {
-      id: p.id, name, price,
+      id: p.id,
+      name,
+      price,
       discount_percent: Math.min(100, Math.max(0, Number($('pgPDisc').value) || 0)),
+      categories: state.selectedCats,
       description,
       image: state.image || '',
-      available: $('pgPAvail').checked,
+      available: $('pgPAvail').checked && stockQty > 0,
+      stock_qty: stockQty,
       sort_order: Number($('pgPSort').value) || 0
     };
     try {
-      await rpc('store_upsert_product', { p_gym: cfg().gym, p_pin: getPin(), p: payload });
-      if (window.PGInventoryBridge) window.PGInventoryBridge.upsertFromStoreProduct(payload);
-      toast('تم حفظ المنتج ومزامنته مع المخزن ✓', 'success');
+      await rpc('store_upsert_product', { p_gym: getGymId(), p: payload });
+      if (window.PGInventoryBridge) window.PGInventoryBridge.upsertFromStoreProduct(payload, stockQty);
+      await window.pgCloudSync?.syncNow(false);
+      toast('تم حفظ المنتج في قاعدة البيانات ومزامنته مع المخزن ✓', 'success');
       state.editing = null;
       await refreshAll();
     } catch (e) { toast(errText(e), 'error'); }
@@ -403,10 +394,11 @@
 
   window.pgStoreDelete = async function (id) {
     const p = state.products.find(x => x.id === id);
-    if (!p || !confirm(`حذف المنتج "${p.name}"؟`)) return;
+    if (!p || !confirm(`حذف المنتج "${p.name}" من المتجر؟`)) return;
     try {
-      await rpc('store_delete_product', { p_gym: cfg().gym, p_pin: getPin(), p_id: id });
-      toast('تم حذف المنتج', 'success');
+      await rpc('store_delete_product', { p_gym: getGymId(), p_id: id });
+      await window.pgCloudSync?.syncNow(false);
+      toast('تم حذف المنتج من قاعدة البيانات', 'success');
       await refreshAll();
     } catch (e) { toast(errText(e), 'error'); }
   };
@@ -424,7 +416,8 @@
           <div class="flex items-start justify-between gap-2">
             <div>
               <p class="text-sm font-black text-white">${esc(r.customer_name)} <span class="text-xs font-normal text-zinc-400" dir="ltr">${esc(r.customer_phone)}</span></p>
-              <p class="text-xs text-amber-300">${esc(r.product_name)} × ${Number(r.qty) || 1}</p>
+              ${r.customer_email ? `<p class="text-[10px] text-sky-300" dir="ltr"><i class="fa-brands fa-google mr-1"></i>${esc(r.customer_email)}</p>` : ''}
+              <p class="text-xs text-amber-300">${esc(r.product_name)} × ${Number(r.qty) || 1} ${Number(r.total_price) > 0 ? `— <b class="text-emerald-300">${money(r.total_price)}</b>` : ''}</p>
               ${r.note ? `<p class="text-[11px] text-zinc-400">ملاحظة: ${esc(r.note)}</p>` : ''}
               <p class="text-[10px] text-zinc-500">${esc(when)}</p>
             </div>
@@ -444,29 +437,12 @@
 
   window.pgStoreStatus = async function (id, status) {
     try {
-      await rpc('store_set_reservation_status', { p_gym: cfg().gym, p_pin: getPin(), p_id: id, p_status: status });
-      const r = state.reservations.find(x => x.id === id);
-      if (r) {
-        const wasDelivered = r.status === 'delivered';
-        r.status = status;
-        if (status === 'delivered' && !wasDelivered && window.PGInventoryBridge) {
-          const res = window.PGInventoryBridge.deductOnStoreDelivery(r.product_id, r.product_name, r.qty);
-          if (res.matched) {
-            toast(`تم التسليم، خصم من المخزن، وإضافة ${money(res.total)} للأرباح ✓`, 'success');
-            if (res.outOfStock) {
-              const p = state.products.find(x => x.id === r.product_id);
-              if (p && p.available) {
-                await rpc('store_upsert_product', {
-                  p_gym: cfg().gym, p_pin: getPin(),
-                  p: { id: p.id, name: p.name, price: p.price, discount_percent: p.discount_percent, description: p.description, image: p.image, available: false, sort_order: p.sort_order }
-                });
-                p.available = false;
-              }
-            }
-          }
-        }
+      const res = await rpc('store_set_reservation_status', { p_gym: getGymId(), p_id: id, p_status: status });
+      if (status === 'delivered') {
+        await window.pgCloudSync?.syncNow(false);
+        toast(`تم التسليم، خصم المخزون، وتسجيل ${money(res?.total || 0)} في قاعدة البيانات ✓`, 'success');
       }
-      render();
+      await refreshAll();
     } catch (e) { toast(errText(e), 'error'); }
   };
 
@@ -477,7 +453,7 @@
     const inp = 'w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white';
     return `
       <div class="rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-3.5 space-y-2">
-        <p class="text-xs font-black text-emerald-300">1. رابط المتجر للاعبين</p>
+        <p class="text-xs font-black text-emerald-300">1. رابط المتجر الفرعي للاعبين (يدعم الحجز السريع وتسجيل دخول Google)</p>
         <input readonly value="${esc(storeUrl())}" dir="ltr" onclick="this.select()" class="${inp}">
         <div class="flex flex-wrap gap-2">
           <button onclick="pgStoreCopyLink()" class="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white">نسخ الرابط</button>
@@ -486,7 +462,7 @@
       </div>
 
       <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 space-y-3">
-        <p class="text-xs font-black text-amber-300">2. إدارة أقسام المتجر (أضف أكثر من قسم)</p>
+        <p class="text-xs font-black text-amber-300">2. إدارة أقسام المتجر</p>
         <div class="flex flex-wrap gap-1.5">
           ${cats.map(c => `<span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/35 px-3 py-1 text-xs font-bold text-amber-200">${esc(c)} <button type="button" onclick="pgStoreRemoveCat('${esc(c)}')" class="text-rose-300 hover:text-rose-200 font-black">×</button></span>`).join('') || '<span class="text-[11px] text-zinc-500">لا توجد أقسام مخصصة بعد</span>'}
         </div>
@@ -573,12 +549,12 @@
         </div>
       </div>
 
-      <button onclick="pgStoreSaveSettings()" class="w-full gold-gradient font-black py-3 px-5 rounded-xl text-sm">حفظ كل التخصيصات والعروض</button>`;
+      <button onclick="pgStoreSaveSettings()" class="w-full gold-gradient font-black py-3 px-5 rounded-xl text-sm">حفظ التخصيصات في قاعدة البيانات</button>`;
   }
 
   function updatePrefsCats(nextCats) {
     const pr = getPrefs();
-    pr.cat = nextCats.join(',').slice(0, 90);
+    pr.cat = nextCats.join(',').slice(0, 120);
     state.info.note = JSON.stringify(pr);
     render();
   }
@@ -657,41 +633,42 @@
     });
     try {
       await rpc('store_save_settings', {
-        p_gym: cfg().gym, p_pin: getPin(),
-        p_name: $('pgSName').value, p_whatsapp: $('pgSWa').value, p_note: packed
+        p_gym: getGymId(),
+        p_name: $('pgSName').value,
+        p_whatsapp: $('pgSWa').value,
+        p_note: packed
       });
       state.info = Object.assign({}, state.info, { store_name: $('pgSName').value, whatsapp: $('pgSWa').value, note: packed });
-      toast('تم حفظ تخصيصات المتجر ✓', 'success');
+      toast('تم حفظ إعدادات المتجر في قاعدة البيانات ✓', 'success');
     } catch (e) { toast(errText(e), 'error'); }
   };
 
-  window.pgStoreLogout = function () { setPin(''); const m = $('pgStoreModal'); if (m) m.remove(); toast('تم تسجيل الخروج', 'info'); };
-
-  // ---------- Bridge for advanced.js (Inventory <-> Store) ----------
   window.PGStoreBridge = {
     syncInventoryItem: async function (item, silent = true) {
-      const c = cfg();
-      const pin = getPin();
-      if (!c.url || !c.key || !pin) {
-        if (!silent) toast('سجّل دخولك إلى "متجر القاعة" أولاً لنشر المنتج سحابياً', 'warning');
+      if (!window.pgAuth?.isAuthenticated()) {
+        if (!silent) toast('سجّل الدخول أولاً لنشر المنتج في المتجر', 'warning');
         return false;
       }
       const prodId = item.storeProductId || ('prd_' + item.id.replace(/^itm_/, ''));
+      const cats = item.category ? [item.category] : [];
       const desc = item.category ? `[${item.category}]\n` : '';
       const payload = {
         id: prodId,
+        inventory_item_id: item.id,
         name: item.name,
+        categories: cats,
         price: Number(item.price) || 0,
         discount_percent: 0,
         description: desc,
         image: '',
         available: Number(item.qty) > 0,
+        stock_qty: Math.max(0, Number(item.qty) || 0),
         sort_order: 0
       };
       try {
-        await rpc('store_upsert_product', { p_gym: c.gym, p_pin: pin, p: payload });
+        await rpc('store_upsert_product', { p_gym: getGymId(), p: payload });
         item.storeProductId = prodId;
-        if (!silent) toast(`تم نشر "${item.name}" في المتجر ✓`, 'success');
+        if (!silent) toast(`تم نشر "${item.name}" في قاعدة بيانات المتجر ✓`, 'success');
         return true;
       } catch (e) {
         if (!silent) toast(errText(e), 'error');
@@ -699,20 +676,4 @@
       }
     }
   };
-
-  function injectLink() {
-    if (document.querySelector('[data-nav-key="store-admin"]')) return true;
-    const sec = $('pgSmartToolsNav');
-    if (!sec || $('pgStoreNavBtn')) return false;
-    const b = document.createElement('button');
-    b.id = 'pgStoreNavBtn';
-    b.className = 'sidebar-link';
-    b.onclick = () => { window.openStoreAdmin(); if (typeof closeMobileMenu === 'function') closeMobileMenu(); };
-    b.innerHTML = '<i class="fa-solid fa-store text-amber-400"></i><span>متجر القاعة</span>';
-    sec.appendChild(b);
-    return true;
-  }
-  function init() { if (!injectLink()) setTimeout(injectLink, 700); }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
 })();

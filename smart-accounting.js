@@ -10,7 +10,7 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = n => Math.round(Number(n) || 0).toLocaleString('en-US') + ' د.ع';
-  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const todayStr = () => (typeof window.getBaghdadDateString === 'function' ? window.getBaghdadDateString() : new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10));
   const toast = (m, t) => { if (typeof showToast === 'function') showToast(m, t || 'info'); };
 
   const EXP_CATS = ['كهرباء ومولدة', 'رواتب ومدربين', 'صيانة أجهزة', 'مستلزمات ونظافة', 'إيجار ومصاريف عامة'];

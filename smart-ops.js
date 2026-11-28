@@ -24,7 +24,7 @@
   const TAB_LABELS = { expired: 'منتهي الاشتراك', soon: 'ينتهي خلال 3 أيام', debt: 'ديون مستحقة', absent: 'غائبون' };
 
   const $ = id => document.getElementById(id);
-  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const todayStr = () => (typeof window.getBaghdadDateString === 'function' ? window.getBaghdadDateString() : new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10));
   const safe = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = n => (Number(n) || 0).toLocaleString('en-US');
   const toast = (m, t) => { if (typeof showToast === 'function') showToast(m, t || 'info'); };
@@ -289,15 +289,24 @@
 
   window.pgTriggerAutoWa = async function (dryRun) {
     const box = $('pgAutoWaResult');
-    if (!window.pgCloudSync) { toast('المزامنة السحابية غير مفعّلة', 'warning'); return; }
-    const c = window.pgCloudSync.getConfig();
-    if (!c.supabaseUrl || !c.syncSecret) { toast('تأكد من إعدادات السيرفر والمزامنة', 'warning'); return; }
+    const client = window.pgSupabase || (window.pgAuth && window.pgAuth.getClient());
+    if (!client || !window.pgAuth?.isAuthenticated()) {
+      toast('يرجى تسجيل الدخول بحساب القاعة أولاً', 'warning');
+      return;
+    }
+    const c = window.pgCloudSync ? window.pgCloudSync.getConfig() : {};
     if (box) box.innerHTML = '<p class="text-amber-300 font-bold py-2">جارٍ الاتصال بالسيرفر...</p>';
     try {
+      const { data: sessionRes } = await client.auth.getSession();
+      const accessToken = sessionRes?.session?.access_token || '';
       const res = await fetch(`${c.supabaseUrl}/functions/v1/auto-whatsapp-alerts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: c.supabaseAnonKey },
-        body: JSON.stringify({ gym_id: c.gymId, sync_secret: c.syncSecret, dryRun })
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: c.supabaseAnonKey,
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({ gym_id: c.gymId, dryRun })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {

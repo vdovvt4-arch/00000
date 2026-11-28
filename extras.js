@@ -393,11 +393,11 @@
     try {
       for (const player of players.slice()) {
         const { status, diffDays } = getSubscriptionStatus(player.endDate);
-        if (status !== 'expired' || diffDays > 1 || diffDays < -3) continue; // يشمل من تبقى له يوم أو أقل كما يصنف منتهي
+        if (status !== 'expired' || diffDays >= 0 || diffDays < -3) continue;
         const key = `${player.endDate}_expired`;
         if (!Array.isArray(player.threeDayRemindersSent)) player.threeDayRemindersSent = [];
         if (player.threeDayRemindersSent.includes(key)) continue;
-        if (!resolveChatId(player)) continue; // لم يربط اللاعب التليكرام بعد: نعيد المحاولة لاحقاً ضمن المدة
+        if (!resolveChatId(player) || typeof sendDirectTelegramMessageToPlayer !== 'function') continue;
         player.playerChatId = player.playerChatId || resolveChatId(player);
         const ok = await sendDirectTelegramMessageToPlayer(player, buildExpiredText(player));
         if (ok) {

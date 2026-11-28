@@ -1,13 +1,17 @@
-// Service Worker - Power Gym Studio v4.0 (PWA Offline-First)
-const CACHE_NAME = 'power-gym-web-v49';
+// Service Worker - Power Gym Studio v4.0 (PWA Offline-First + Auth Safe)
+const CACHE_NAME = 'power-gym-web-v50';
 const LOCAL_ASSETS = [
   './',
   './index.html',
   './dist/app.css',
   './assets/images/hero-gym.jpg',
+  './assets/images/iron-zone.jpg',
+  './assets/images/cardio-zone.jpg',
   './storage-shim.js',
+  './js/vendor/supabase.min.js',
   './js/data-foundation.js',
   './js/core.js',
+  './js/auth.js',
   './js/calendar.js',
   './js/finance.js',
   './js/telegram.js',
@@ -17,11 +21,15 @@ const LOCAL_ASSETS = [
   './receipts.js',
   './extras.js',
   './advanced.js',
+  './smart-accounting.js',
+  './smart-gym.js',
   './cloud-sync.js',
   './js/backend-api.js',
   './smart-ops.js',
   './store-admin.js',
   './smart-notifications.js',
+  './ambient-music.js',
+  './studio-motion.js',
   './store.html',
   './store.js',
   './manifest.json',
@@ -56,7 +64,12 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(req.url);
 
-  if (url.hostname.endsWith('.supabase.co') || url.hostname === 'api.telegram.org' || url.hostname === 'api.qrserver.com') {
+  if (
+    url.hostname.endsWith('.supabase.co') ||
+    url.hostname.endsWith('.googleusercontent.com') ||
+    url.hostname === 'api.telegram.org' ||
+    url.hostname === 'api.qrserver.com'
+  ) {
     return;
   }
 

@@ -1,4 +1,4 @@
-/* store.js — صفحة المتجر العامة للاعبين (تطبق كل تخصيصات المدير تلقائياً) */
+/* store.js v4.0 — صفحة المتجر الفرعي العامة للاعبين (مربوطة بـ PostgreSQL + Google Sign-In) */
 (function () {
   'use strict';
 
@@ -10,6 +10,12 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  const supabase = window.supabase
+    ? window.supabase.createClient(CFG.url, CFG.key, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'pg_supabase_auth_token_v2' }
+      })
+    : null;
+
   const ERRORS = {
     invalid_name: 'اكتب اسمك (حرفان على الأقل)',
     invalid_phone: 'رقم الهاتف غير صحيح',
@@ -17,13 +23,20 @@
     product_unavailable: 'هذا المنتج غير متوفر حالياً',
     too_many: 'محاولات حجز كثيرة، حاول لاحقاً'
   };
+  const STATUS_LABELS = {
+    new: 'قيد المراجعة',
+    contacted: 'تم التواصل',
+    delivered: 'تم التسليم ✓',
+    cancelled: 'ملغي'
+  };
 
   let products = [];
   let info = {};
+  let storeUser = null;
   let prefs = {
     t: '',
-    c: '#0891b2',
-    bg: 'light',
+    c: '#f59e0b',
+    bg: 'dark',
     open: 1,
     so: 1,
     nt: 1,
@@ -43,8 +56,84 @@
   let promoIdx = 0;
   let promoTimer = null;
 
-  const headers = () => ({ apikey: CFG.key, 'Content-Type': 'application/json' });
   const money = n => Math.round(Number(n) || 0).toLocaleString('en-US') + ' ' + (prefs.cur || 'د.ع');
+
+  function renderStoreAuthBar() {
+    const bar = $('storeAuthBar');
+    if (!bar || !supabase) return;
+
+    if (!storeUser) {
+      bar.innerHTML = `
+        <button type="button" id="storeGoogleBtn" class="google-btn">
+          <svg width="15" height="15" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+            <path fill="#FF3D00" d="m6.306 14.691 6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+            <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+            <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+          </svg>
+          <span>تسجيل دخول Google</span>
+        </button>
+      `;
+      $('storeGoogleBtn').onclick = async () => {
+        const redirectTo = window.location.origin + window.location.pathname + window.location.search;
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo, queryParams: { prompt: 'select_account' } }
+        });
+        if (error) alert('تعذر تسجيل الدخول عبر Google حالياً: ' + error.message);
+      };
+      return;
+    }
+
+    const name = storeUser.user_metadata?.full_name || storeUser.user_metadata?.name || storeUser.email || 'مشترك';
+    const avatar = storeUser.user_metadata?.avatar_url || storeUser.user_metadata?.picture || '';
+    bar.innerHTML = `
+      <span class="user-chip">
+        ${avatar ? `<img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer">` : ''}
+        <span>${esc(name)}</span>
+      </span>
+      <button type="button" id="storeMyOrdersBtn" class="google-btn">حجوزاتي</button>
+      <button type="button" id="storeLogoutBtn" class="google-btn">خروج</button>
+    `;
+    $('storeMyOrdersBtn').onclick = openMyReservationsSheet;
+    $('storeLogoutBtn').onclick = async () => {
+      await supabase.auth.signOut().catch(() => {});
+      storeUser = null;
+      renderStoreAuthBar();
+    };
+  }
+
+  async function openMyReservationsSheet() {
+    if (!supabase || !storeUser) return;
+    $('sheet').innerHTML = '<h2>حجوزاتي في المتجر</h2><p class="sub">جارٍ التحميل من قاعدة البيانات...</p>';
+    $('overlay').classList.add('show');
+
+    const { data, error } = await supabase.rpc('store_my_reservations', { p_gym: GYM });
+    if (error) {
+      $('sheet').innerHTML = `<h2>حجوزاتي</h2><p class="sub">تعذر جلب الحجوزات: ${esc(error.message)}</p><button class="btn ghost" style="width:100%" id="closeMyRes">إغلاق</button>`;
+      $('closeMyRes').onclick = closeSheet;
+      return;
+    }
+
+    const list = Array.isArray(data) ? data : [];
+    $('sheet').innerHTML = `
+      <h2>حجوزاتي (${list.length})</h2>
+      <p class="sub">المرتبطة بحساب ${esc(storeUser.email || '')}</p>
+      <div>
+        ${list.length ? list.map(r => `
+          <div class="res-item">
+            <div>
+              <div style="font-weight:800">${esc(r.product_name)} × ${Number(r.qty) || 1}</div>
+              <div style="font-size:11px;color:var(--muted)">${Number(r.total_price) > 0 ? money(r.total_price) + ' · ' : ''}${esc(new Date(r.created_at).toLocaleDateString('ar-IQ'))}</div>
+            </div>
+            <span class="res-status">${esc(STATUS_LABELS[r.status] || r.status)}</span>
+          </div>
+        `).join('') : '<p style="text-align:center;color:var(--muted);padding:24px 0">لا توجد حجوزات مسجلة بهذا الحساب بعد.</p>'}
+      </div>
+      <button class="btn ghost" style="width:100%;margin-top:10px" id="closeMyRes">إغلاق</button>
+    `;
+    $('closeMyRes').onclick = closeSheet;
+  }
 
   function parsePrefs(rawNote) {
     const s = String(rawNote || '').trim();
@@ -53,12 +142,16 @@
         const obj = JSON.parse(s);
         prefs = Object.assign({}, prefs, obj);
         return;
-      } catch { /* fallback to plain text */ }
+      } catch { /* fallback */ }
     }
-    prefs.t = s;
+    if (s) prefs.t = s;
   }
 
-  function parseProductCategory(desc) {
+  function parseProductCategory(desc, rowCats) {
+    if (Array.isArray(rowCats) && rowCats.length) {
+      const m = String(desc || '').match(/^\[([^\]]{1,80})\]\s*\n?([\s\S]*)$/);
+      return { cats: rowCats.map(x => String(x).trim()).filter(Boolean), cat: rowCats.join(' · '), text: m ? m[2].trim() : String(desc || '').trim() };
+    }
     const m = String(desc || '').match(/^\[([^\]]{1,80})\]\s*\n?([\s\S]*)$/);
     if (!m) return { cats: [], cat: '', text: String(desc || '').trim() };
     const cats = m[1].split(/[,،]/).map(x => x.trim()).filter(Boolean);
@@ -74,17 +167,6 @@
     document.body.classList.remove('theme-soft', 'theme-dark');
     if (prefs.bg === 'soft') document.body.classList.add('theme-soft');
     else if (prefs.bg === 'dark') document.body.classList.add('theme-dark');
-  }
-
-  async function rpc(name, args) {
-    const res = await fetch(`${CFG.url}/rest/v1/rpc/${name}`, { method: 'POST', headers: headers(), body: JSON.stringify(args) });
-    const text = await res.text();
-    if (!res.ok) {
-      let msg = text;
-      try { msg = JSON.parse(text).message; } catch { /* ignore */ }
-      throw new Error(msg);
-    }
-    return text ? JSON.parse(text) : null;
   }
 
   function finalPrice(p) {
@@ -155,8 +237,9 @@
     const bar = $('catsBar');
     if (!bar) return;
     const fromPrefs = String(prefs.cat || '').split(/[,،]/).map(x => x.trim()).filter(Boolean);
-    const fromProds = products.flatMap(p => parseProductCategory(p.description).cats).filter(Boolean);
-    const cats = Array.from(new Set([...fromPrefs, ...fromProds]));
+    const fromInfo = Array.isArray(info.categories) ? info.categories : [];
+    const fromProds = products.flatMap(p => parseProductCategory(p.description, p.categories).cats).filter(Boolean);
+    const cats = Array.from(new Set([...fromPrefs, ...fromInfo, ...fromProds]));
     if (!cats.length) {
       bar.style.display = 'none';
       return;
@@ -172,7 +255,7 @@
     const q = ($('search').value || '').trim().toLowerCase();
     const list = products.filter(p => {
       if (!prefs.so && !p.available) return false;
-      const parsed = parseProductCategory(p.description);
+      const parsed = parseProductCategory(p.description, p.categories);
       if (activeCategory !== 'الكل' && !parsed.cats.includes(activeCategory)) return false;
       return !q || (p.name || '').toLowerCase().includes(q) || parsed.text.toLowerCase().includes(q);
     });
@@ -190,7 +273,7 @@
     grid.innerHTML = list.map(p => {
       const d = Number(p.discount_percent) || 0;
       const sold = !p.available;
-      const parsed = parseProductCategory(p.description);
+      const parsed = parseProductCategory(p.description, p.categories);
       return `
         <article class="card">
           <div class="thumb">
@@ -222,11 +305,12 @@
 
   function drawForm() {
     const p = current;
+    const defaultName = storeUser ? (storeUser.user_metadata?.full_name || storeUser.user_metadata?.name || '') : '';
     $('sheet').innerHTML = `
       <h2>حجز: ${esc(p.name)}</h2>
       <p class="sub">${money(finalPrice(p))} للقطعة — الدفع عند الاستلام من القاعة</p>
       <div id="formError" class="error"></div>
-      <div class="field"><label for="cName">الاسم</label><input id="cName" maxlength="80" autocomplete="name" placeholder="اسمك الكامل"></div>
+      <div class="field"><label for="cName">الاسم</label><input id="cName" maxlength="80" autocomplete="name" value="${esc(defaultName)}" placeholder="اسمك الكامل"></div>
       <div class="field"><label for="cPhone">رقم الهاتف</label><input id="cPhone" type="tel" dir="ltr" maxlength="15" autocomplete="tel" placeholder="07801234567" style="text-align:right"></div>
       <div class="field"><label>الكمية</label>
         <div class="qty"><button type="button" id="qMinus">−</button><span id="qVal">${qty}</span><button type="button" id="qPlus">+</button></div>
@@ -256,12 +340,17 @@
     if (phone.replace(/\D/g, '').length < 7) return showError(ERRORS.invalid_phone);
     const btn = $('cSend');
     btn.disabled = true;
-    btn.textContent = 'جارٍ الإرسال...';
+    btn.textContent = 'جارٍ الحفظ في قاعدة البيانات...';
     try {
-      await rpc('store_reserve', {
-        p_gym: GYM, p_product_id: current.id, p_qty: qty,
-        p_name: name, p_phone: phone, p_note: ($('cNote')?.value || '').trim()
+      const { error } = await supabase.rpc('store_reserve', {
+        p_gym: GYM,
+        p_product_id: current.id,
+        p_qty: qty,
+        p_name: name,
+        p_phone: phone,
+        p_note: ($('cNote')?.value || '').trim()
       });
+      if (error) throw new Error(error.message);
       done(name);
     } catch (e) {
       btn.disabled = false;
@@ -278,18 +367,30 @@
     $('sheet').innerHTML = `
       <div class="ok">
         <div class="tick">✅</div>
-        <h3>تم استلام حجزك</h3>
-        <p>شكراً ${esc(name)}، سيتواصل معك فريق القاعة قريباً، ويمكنك استلام طلبك من القاعة.</p>
-        ${intl ? `<a class="btn" style="display:block;text-decoration:none;margin-bottom:8px" href="https://wa.me/${intl}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">تواصل عبر واتساب</a>` : ''}
+        <h3>تم تسجيل حجزك في قاعدة البيانات</h3>
+        <p>شكراً ${esc(name)}، تم حفظ طلبك وسيتم تجهيزه للاستلام من القاعة.</p>
+        ${intl ? `<a class="btn" style="display:block;text-decoration:none;margin-bottom:8px" href="https://wa.me/${intl}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">تأكيد عبر واتساب</a>` : ''}
         <button class="btn ghost" style="width:100%" id="okClose">إغلاق</button>
       </div>`;
     $('okClose').onclick = closeSheet;
   }
 
   async function load() {
+    if (supabase) {
+      const { data: sessionRes } = await supabase.auth.getSession();
+      storeUser = sessionRes?.session?.user || null;
+      renderStoreAuthBar();
+      supabase.auth.onAuthStateChange((_ev, session) => {
+        storeUser = session?.user || null;
+        renderStoreAuthBar();
+      });
+    }
+
     try {
-      info = (await rpc('store_get_info', { p_gym: GYM })) || {};
+      const { data } = await supabase.rpc('store_get_info', { p_gym: GYM });
+      info = data || {};
     } catch { info = {}; }
+
     parsePrefs(info.note);
     applyTheme();
     if (info.store_name) {
@@ -304,9 +405,14 @@
     }
 
     try {
-      const res = await fetch(`${CFG.url}/rest/v1/store_products?gym_id=eq.${encodeURIComponent(GYM)}&select=*&order=sort_order.asc,updated_at.desc`, { headers: { apikey: CFG.key } });
-      if (!res.ok) throw new Error('load_failed');
-      products = await res.json();
+      const { data, error } = await supabase
+        .from('store_products')
+        .select('*')
+        .eq('gym_id', GYM)
+        .order('sort_order', { ascending: true })
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      products = data || [];
     } catch {
       products = [];
       const empty = $('empty');

@@ -9,7 +9,7 @@
   const DISMISSED_KEY = 'pg_dismissed_notifs_v1';
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const todayStr = () => (typeof window.getBaghdadDateString === 'function' ? window.getBaghdadDateString() : new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10));
 
   let activeTab = 'all';
 

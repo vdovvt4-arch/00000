@@ -29,7 +29,7 @@
   let closes = read(KEYS.closes);
 
   const money = n => (Number(n) || 0).toLocaleString('en-US') + ' د.ع';
-  const today = () => new Date().toISOString().slice(0, 10);
+  const today = () => (typeof window.getBaghdadDateString === 'function' ? window.getBaghdadDateString() : new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10));
   const safe = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function modal(title, body) {

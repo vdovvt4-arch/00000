@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Power Gym">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://cdn-icons-png.flaticon.com https://api.qrserver.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co https://api.telegram.org;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.googleusercontent.com https://cdn-icons-png.flaticon.com https://api.qrserver.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.telegram.org;">
   <script>
     if (new URLSearchParams(location.search).get('pgCoach') === '1') {
       document.documentElement.classList.add('pg-coach-mode');
@@ -169,6 +169,9 @@
         <button data-captain-only="1" onclick="openFinanceModal('profits'); closeMobileMenu();" class="sidebar-link">
           <i class="fa-solid fa-chart-line"></i><span>الأرباح والمصاريف</span>
         </button>
+        <button data-nav-key="smart-accounting" data-captain-only="1" onclick="openSmartAccountingModal?.(); closeMobileMenu();" class="sidebar-link">
+          <i class="fa-solid fa-calculator"></i><span>المحاسب الذكي</span>
+        </button>
         <button onclick="openFinanceModal('debts'); closeMobileMenu();" class="sidebar-link">
           <i class="fa-solid fa-hand-holding-dollar"></i><span>ديون اللاعبين</span>
         </button>
@@ -188,6 +191,12 @@
         <button onclick="pgOpenInventory?.(); closeMobileMenu();" class="sidebar-link">
           <i class="fa-solid fa-boxes-stacked"></i><span>المخزن والمبيعات</span>
         </button>
+        <button onclick="openSmartGymToolsModal?.(); closeMobileMenu();" class="sidebar-link">
+          <i class="fa-solid fa-dumbbell"></i><span>حاسبات الحديد والدايت</span>
+        </button>
+        <button data-captain-only="1" onclick="pgOpenTrainers?.(); closeMobileMenu();" class="sidebar-link">
+          <i class="fa-solid fa-user-tie"></i><span>المدربون و QR المساعد</span>
+        </button>
         <button onclick="openFinanceModal('customize'); closeMobileMenu();" class="sidebar-link">
           <i class="fa-solid fa-tags"></i><span>الأسعار والقاعة</span>
         </button>
@@ -195,17 +204,17 @@
           <i class="fa-brands fa-whatsapp text-emerald-400"></i><span>قوالب الواتساب</span>
         </button>
         <button data-pg-cloud-btn="1" data-captain-only="1" onclick="openCloudSyncModal?.(); closeMobileMenu();" class="sidebar-link">
-          <i class="fa-solid fa-cloud-arrow-up"></i><span>المزامنة السحابية</span>
-        </button>
-        <button data-pg-role-btn="1" onclick="pgSwitchRoleQuick?.(); closeMobileMenu();" class="sidebar-link">
-          <i class="fa-solid fa-user-shield"></i><span>مدير / مشرف</span>
+          <i class="fa-solid fa-database"></i><span>قاعدة البيانات والمشرفين</span>
         </button>
         <button data-captain-only="1" onclick="openSettingsModal(); closeMobileMenu();" class="sidebar-link">
           <i class="fa-solid fa-gear"></i><span>الإعدادات والنسخ</span>
           <span id="botStatusDot" class="hidden"></span>
         </button>
         <button onclick="lockSystemNow(); closeMobileMenu();" id="btnLockNow" class="sidebar-link text-rose-300 hover:bg-rose-500/10 hover:text-rose-200">
-          <i class="fa-solid fa-lock !text-rose-400"></i><span>قفل التطبيق</span>
+          <i class="fa-solid fa-lock !text-rose-400"></i><span>قفل الشاشة السريع</span>
+        </button>
+        <button onclick="pgSignOut?.(); closeMobileMenu();" class="sidebar-link text-zinc-400 hover:bg-zinc-800 hover:text-white">
+          <i class="fa-solid fa-right-from-bracket !text-zinc-400"></i><span>تسجيل الخروج</span>
         </button>
       </section>
     </nav>
@@ -1130,9 +1139,11 @@
     </div>
   </footer>
 
-  <!-- المنطق البرمجي المهيكل -->
+  <!-- المنطق البرمجي المهيكل والموثّق عبر Supabase Auth -->
+  <script src="js/vendor/supabase.min.js"></script>
   <script src="js/data-foundation.js"></script>
   <script src="js/core.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/finance.js"></script>
   <script src="js/telegram.js"></script>
@@ -1142,10 +1153,14 @@
   <script src="receipts.js"></script>
   <script src="extras.js"></script>
   <script src="advanced.js"></script>
+  <script src="smart-accounting.js"></script>
+  <script src="smart-gym.js"></script>
   <script src="cloud-sync.js"></script>
   <script src="js/backend-api.js"></script>
   <script src="smart-ops.js"></script>
   <script src="store-admin.js"></script>
   <script src="smart-notifications.js"></script>
+  <script src="ambient-music.js"></script>
+  <script src="studio-motion.js"></script>
 </body>
 </html>
